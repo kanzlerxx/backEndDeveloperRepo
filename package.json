@@ -9,7 +9,7 @@
     "train": "node src/learning/training/training.model.js",
     "watch": "node src/learning/training/watchAndRetrain.js"
   },
-    "prisma": {
+  "prisma": {
     "seed": "node prisma/seeders/seed.js"
   },
   "keywords": [],
@@ -45,6 +45,7 @@
     "multer": "^1.4.5-lts.1",
     "natural": "^8.0.1",
     "nodemon": "^3.1.9",
+    "pg": "^8.16.3",
     "pino": "^9.6.0",
     "puppeteer": "^24.26.0",
     "qrcode": "^1.5.4",
