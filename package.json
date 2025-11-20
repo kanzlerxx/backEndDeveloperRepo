@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "src/index.js",
   "type": "module",
+  "build": "npm run build",
   "scripts": {
     "start": "nodemon src/index.js",
     "db:seed": "node prisma/seeders/seed.js",
@@ -10,6 +11,7 @@
     "watch": "node src/learning/training/watchAndRetrain.js",
     "postinstall": "prisma generate"
   },
+  
   "prisma": {
     "seed": "node prisma/seeders/seed.js"
   },
