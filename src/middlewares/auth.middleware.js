@@ -40,7 +40,7 @@ export default function auth(roles) {
       }
       
       // Find user by decoded token
-      const user = await prisma.user.findFirst({
+      const user = await prisma.users.findFirst({
         where: { id: decoded.userId },
         include: { roles: true } // Get role relations
       });

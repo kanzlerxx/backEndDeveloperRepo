@@ -1,192 +1,133 @@
-datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
-model User {
-  id         String    @id @default(uuid())
-  fullName   String?
-  email      String    @unique
-  password   String
-  phoneWA    String?
-  nik        Int
-  signature  String?
-  status     Boolean?  @default(true)
-  language   Boolean?   @default(false)
-  isVerified Boolean   @default(false)
-  createdAt  DateTime? @default(now())
-  divisionId String
-  division   Division  @relation(fields: [divisionId], references: [id], onDelete: Cascade)
-
-  roles         Roles[]
-  bankAccount   BankAccount[]
-  submissions   submission[]
-  approvals     Approval[]        @relation("UserApprovals")
-  histories     ApprovalHistory[]
-  hirarkyId     String?
-  hirarky       Hirarky?          @relation(fields: [hirarkyId], references: [id], onDelete: SetNull)
-  hirarkyLevels HirarkyLevel[]    @relation("HirarkyLevelApprover")
+datasource db {
+  provider = "postgresql"
+  url      = env("PG_HOST")
 }
 
-model BankAccount {
-  id        String    @id @default(uuid())
-  idUser    String
-  name      String
-  bankName  String
-  number    String    @unique
-  createdAt DateTime? @default(now())
-
-  user User @relation(fields: [idUser], references: [id], onDelete: Cascade)
+model bookmark_content {
+  id                                                                Int             @id @default(autoincrement())
+  user_id                                                           Int
+  bookmark_name                                                     String?         @db.VarChar(150)
+  color                                                             String?         @db.VarChar(50)
+  bookmark_list_id                                                  Int?
+  bookmark_list_bookmark_content_bookmark_list_idTobookmark_list    bookmark_list?  @relation("bookmark_content_bookmark_list_idTobookmark_list", fields: [bookmark_list_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                                                             users           @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  bookmark_list_bookmark_list_bookmark_content_idTobookmark_content bookmark_list[] @relation("bookmark_list_bookmark_content_idTobookmark_content")
 }
 
-model Roles {
-  id          String    @id @default(uuid())
-  name        String
-  code        String    @unique
-  description String?
-  createdAt   DateTime? @default(now())
-
-  users            User[]
-  permission Permissions[]
+model bookmark_list {
+  id                                                                   Int                @id @default(autoincrement())
+  bookmark_content_id                                                  Int?
+  threads_id                                                           Int
+  bookmark_content_bookmark_content_bookmark_list_idTobookmark_list    bookmark_content[] @relation("bookmark_content_bookmark_list_idTobookmark_list")
+  bookmark_content_bookmark_list_bookmark_content_idTobookmark_content bookmark_content?  @relation("bookmark_list_bookmark_content_idTobookmark_content", fields: [bookmark_content_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  threads                                                              threads            @relation(fields: [threads_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
-model Permissions {
-  id          String   @id @default(uuid())
-  roleId      String
-  label        String
-  subLabel        String   
-
-  read        Boolean  
-  create      Boolean
-  update      Boolean
-  delete      Boolean
-
-  description String?
-  created_at  DateTime @default(now())
-
-  role        Roles    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+model categories {
+  id              Int     @id @default(autoincrement())
+  categories_name String  @unique @db.VarChar(100)
+  forum           forum[]
 }
 
-model Division {
-  id          String    @id @default(uuid())
-  name        String
-  Code        String    @unique
-  description String?
-  createdAt   DateTime? @default(now())
-
-  user User[]
+model comments {
+  id              Int        @id @default(autoincrement())
+  user_id         Int
+  comment_desc    String
+  threads_id      Int
+  bind_to_comment Int?
+  comments        comments?  @relation("commentsTocomments", fields: [bind_to_comment], references: [id], onUpdate: NoAction)
+  other_comments  comments[] @relation("commentsTocomments")
+  threads         threads    @relation(fields: [threads_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users           users      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
-model submission {
-  id                String    @id @default(uuid())
-  userId            String
-  number            String    @unique
-  createdAt         DateTime? @default(now())
-  updatedAt         DateTime  @updatedAt
-  projectId         String?
-  date              DateTime
-  activity          String
-  description       String
-  status            String?
-  typeId            String?
-  submissionF4Id    String?
+model follow {
+  id                 Int   @id @default(autoincrement())
+  user_id            Int
+  following_forum_id Int
+  forum              forum @relation(fields: [following_forum_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users              users @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  submissionDetail submissionDetail[]
-  approval         Approval[]
-  type             typeSubmission?    @relation(fields: [typeId], references: [id], onDelete: SetNull)
-  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project          projectCode?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  @@unique([user_id, following_forum_id])
 }
 
-model submissionDetail {
-  id           String    @id @default(uuid())
-  submissionId String
-  name         String
-  qty          Int
-  categoryId   String?
-  amount       Float
-  evidence     String?
-  createdAt    DateTime? @default(now())
-
-  submission submission         @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  category   categorySubmission? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+model forum {
+  id                   Int         @id @default(autoincrement())
+  user_id              Int?
+  forum_title          String      @db.VarChar(255)
+  forum_description    String?
+  forum_profile        String?     @db.VarChar(255)
+  forum_total_follower Int?        @default(0)
+  forum_banner         String?     @db.VarChar(255)
+  forum_total_threads  Int?        @default(0)
+  id_categories        Int?
+  follow               follow[]
+  categories           categories? @relation(fields: [id_categories], references: [id], onUpdate: NoAction)
+  users                users?      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  threads              threads[]
 }
 
-model categorySubmission {
-  id   String @id @default(uuid())
-  name String
-  code String @unique
-  description String?
-
-  submissionDetail submissionDetail[]
+model hashtags {
+  id               Int                @id @default(autoincrement())
+  hashtags_name    String             @unique @db.VarChar(100)
+  threads_hashtags threads_hashtags[]
 }
 
-model typeSubmission {
-  id          String       @id @default(uuid())
-  name        String
-  code        String?      @unique
-  description String?
-  createdAt   DateTime?    @default(now())
-  submission  submission[]
+model likes {
+  id         Int     @id @default(autoincrement())
+  user_id    Int
+  threads_id Int
+  threads    threads @relation(fields: [threads_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users      users   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, threads_id])
 }
 
-model projectCode {
-  id          String    @id @default(uuid())
-  name        String
-  code        String    @unique
-  description String?
-  createdAt   DateTime? @default(now())
-
-  submission submission[]
+model threads {
+  id                  Int                @id @default(autoincrement())
+  user_id             Int
+  threads_title       String             @db.VarChar(255)
+  threads_thumbnail   String?            @db.VarChar(255)
+  threads_description String?            @db.VarChar(255)
+  threads_concern     String?            @db.VarChar(100)
+  forum_id            Int
+  bookmark_list       bookmark_list[]
+  comments            comments[]
+  likes               likes[]
+  forum               forum              @relation(fields: [forum_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users               users              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  threads_hashtags    threads_hashtags[]
 }
 
-model Approval {
-  id           String            @id @default(uuid())
-  submissionId String            
-  submission   submission        @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  sequence     Int
-  requiredRole String
-  status       String            @default("PENDING")
-  approverId   String?
-  approver     User?             @relation("UserApprovals", fields: [approverId], references: [id], onDelete: Cascade)
-  comment      String?
-  histories    ApprovalHistory[]
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+model threads_hashtags {
+  threads_id  Int
+  hashtags_id Int
+  hashtags    hashtags @relation(fields: [hashtags_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  threads     threads  @relation(fields: [threads_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([threads_id, hashtags_id])
 }
 
-model ApprovalHistory {
-  id         String   @id @default(uuid())
-  approvalId String
-  approval   Approval @relation(fields: [approvalId], references: [id], onDelete: Cascade)
-  actorId    String?
-  actor      User?    @relation(fields: [actorId], references: [id], onDelete: Cascade)
-  oldStatus  String?
-  newStatus  String
-  comment    String?
-  createdAt  DateTime @default(now())
-}
-
-model Hirarky {
-  id          String         @id @default(uuid())
-  name        String
-  description String?
-  levels      HirarkyLevel[]
-  users       User[]
-  createdAt   DateTime       @default(now())
-}
-
-model HirarkyLevel {
-  id           String   @id @default(uuid())
-  hirarkyId    String
-  hirarky      Hirarky  @relation(fields: [hirarkyId], references: [id], onDelete: Cascade)
-  sequence     Int
-  requiredRole String
-  approverId   String?
-  approver     User?    @relation("HirarkyLevelApprover", fields: [approverId], references: [id], onDelete: SetNull)
-  createdAt    DateTime @default(now())
+model users {
+  id               Int                @id @default(autoincrement())
+  username         String?            @db.VarChar(50)
+  email            String             @unique(map: "unique_email") @db.VarChar(255)
+  password         String             @db.VarChar(255)
+  profile_image    String?            @db.VarChar(300)
+  bio              String?
+  status           Boolean?           @default(false)
+  report           Int?               @db.SmallInt
+  duration         DateTime?          @db.Timestamptz(6)
+  created_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  has_shadow_ban   Boolean?           @default(false)
+  bookmark_content bookmark_content[]
+  comments         comments[]
+  follow           follow[]
+  forum            forum[]
+  likes            likes[]
+  threads          threads[]
 }

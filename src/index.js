@@ -7,10 +7,9 @@ import fs from 'fs';
 import path from 'path';
 import http from 'http';
 import { Server } from 'socket.io';
-import { startWhatsApp } from '../src/utils/whatsappClient.js';
 import router from './routes.js';
 import handleError from './exceptions/handler.exception.js';
-import auth from './middlewares/auth.middleware.js';
+
 
 const app = express();
 dotenv.config();
@@ -112,11 +111,11 @@ io.on('connection', (socket) => {
   });
 });
 
-startWhatsApp(io)
-.then(() => {
-    console.log('WhatsApp client started');
-  })
-  .catch((err) => console.error(err));
+// startWhatsApp(io)
+// .then(() => {
+//     console.log('WhatsApp client started');
+//   })
+//   .catch((err) => console.error(err));
 
 
 server.listen(port, () => {
