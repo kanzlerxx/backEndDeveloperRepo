@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
 
-const privateKey = fs.readFileSync('secrets/private.pem', 'utf8');
+const privateKey = fs.readFileSync('secrets\private.pem', 'utf8');
 
 export const generateAccessToken = async (user) => {
   const payload = {
