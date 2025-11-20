@@ -16,7 +16,6 @@ export async function seedUsers() {
       profile_image: "https://example.com/profiles/admin1.jpg",
       bio: "el kontol ajg",
       status: true,
-      has_shadow_ban: false,
     },
   });
 }
