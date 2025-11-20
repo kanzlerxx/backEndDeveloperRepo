@@ -39,22 +39,18 @@ class AuthenticationService extends BaseService {
   };
 
   register = async (payload) => {
-    const { email, password, divisionId, roles, hirarkyId, ...others } =
+    const { email, password, ...others } =
       payload;
 
-    /* ---------- validasi ---------- */
     const existing = await this.db.users.findUnique({ where: { email } });
     if (existing) throw new Forbidden('Email has been registered');
-
-
-    /* ---------- pembuatan user + relasi ---------- */
     const data = await this.db.users.create({
       data: {
         email,
         password: await hash(password, 10)
       },
     });
-
+    
   // hilangkan field sensitif (opsional, sesuaikan dengan kebutuhan)
   const sanitized = this.exclude(data, ['password', 'isVerified']);
 

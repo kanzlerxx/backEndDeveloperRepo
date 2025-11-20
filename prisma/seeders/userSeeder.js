@@ -4,32 +4,19 @@ import { hash } from '../../src/helpers/bcrypt.helper.js';
 const prisma = new PrismaClient();
 
 export async function seedUsers() {
-  console.log('Seeding Users...');
+  const password = await hash('Admin123');
 
-  const password = await hash('Admin123'); // compute once
-
-  const user1 = await prisma.users.upsert({
-    where: { email: "admin1@example.com" },
-    update: {       
-    },
+  return await prisma.users.upsert({
+    where: { email: "kontol@example.com" },
+    update: {},
     create: {
-      fullName: "Admin1",
-      email: "admin1@example.com",
-      password,
-      duration: new Date(),
+      username: "Admin1",
+      email: "kontol@example.com",
+      password: password,
+      profile_image: "https://example.com/profiles/admin1.jpg",
+      bio: "el kontol ajg",
       status: true,
-      is_shadow_banned: false
-    }
+      has_shadow_ban: false,
+    },
   });
-
-  return { user1 };
 }
-
-seedUsers()
-  .catch((err) => {
-    console.error('Seed error:', err);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });

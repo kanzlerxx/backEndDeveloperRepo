@@ -1,12 +1,10 @@
 import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-
-
 import { seedUsers } from './userSeeder.js';
 
+const prisma = new PrismaClient();
 
 async function seedAll() {
-  await seedUsers(prisma);
+  await seedUsers();
 
   console.log('✅ Semua seed berhasil.');
 }
