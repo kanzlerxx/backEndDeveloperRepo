@@ -48,6 +48,7 @@ class AuthenticationService extends BaseService {
       data: {
         email,
         password: await hash(password, 10)
+        
       },
     });
     
