@@ -1,0 +1,41 @@
+import BaseController from "../../base/controller.base.js";
+import { NotFound } from "../../exceptions/catch.execption.js";
+import forumService from "./forum.service.js";
+
+class forumController extends BaseController {
+  #service;
+
+  constructor() {
+    super();
+    this.#service = new forumService();
+  }
+
+  findAll = this.wrapper(async (req, res) => {
+    const data = await this.#service.findAll(req.query);
+    return this.ok(res, data, "forums successfully retrieved");
+  });
+
+  findById = this.wrapper(async (req, res) => {
+    const data = await this.#service.findById(req.params.id);
+    if (!data) throw new NotFound("forum not found");
+
+    return this.ok(res, data, "forum successfully retrieved");
+  });
+
+  create = this.wrapper(async (req, res) => {
+    const data = await this.#service.create(req.body);
+    return this.created(res, data, "forum successfully created");
+  });
+
+  update = this.wrapper(async (req, res) => {
+    const data = await this.#service.update(req.params.id, req.body);
+    return this.ok(res, data, "forum successfully updated");
+  });
+
+  delete = this.wrapper(async (req, res) => {
+    const data = await this.#service.delete(req.params.id);
+    return this.noContent(res, "forum successfully deleted");
+  });
+}
+
+export default forumController;
