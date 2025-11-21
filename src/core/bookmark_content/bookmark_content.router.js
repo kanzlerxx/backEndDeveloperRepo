@@ -1,17 +1,16 @@
 import { Router } from "express";
 import validatorMiddleware from "../../middlewares/validator.middleware.js";
-import forumController from "./forum.controller.js";
-import forumValidator from "./forum.validator.js";
+import bookmark_contentController from "./bookmark_content.controller.js";
+import bookmark_contentValidator from "./bookmark_content.validator.js";
 import { baseValidator } from "../../base/validator.base.js";
 import auth from "../../middlewares/auth.middleware.js";
 
 const r = Router(),
-  validator = forumValidator,
-  controller = new forumController();
+  validator = bookmark_contentValidator,
+  controller = new bookmark_contentController();
 
 r.get(
-  "/show-all"
-  ,
+  "/show-all",
   validatorMiddleware({ query: baseValidator.browseQuery }),
   controller.findAll
 );
@@ -20,7 +19,7 @@ r.get("/show-one/:id", controller.findById);
 
 r.post(
   "/create",
-  auth(),
+  auth(['ADMIN']),
   validatorMiddleware({ body: validator.create }),
   controller.create
   );
@@ -34,5 +33,5 @@ r.post(
     
 r.delete("/delete/:id", auth(['ADMIN']), controller.delete);
 
-const forumRouter = r;
-export default forumRouter;
+const bookmark_contentRouter = r;
+export default bookmark_contentRouter;
