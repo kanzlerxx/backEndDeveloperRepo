@@ -22,9 +22,17 @@ r.post(
 
 r.post(
   '/register',
-  auth(['ADMIN']),
+  // auth(),
   validatorMiddleware({ body: validator.register }),
   controller.register
+);
+
+
+r.put(
+  '/update',
+  auth(),
+  validatorMiddleware({ body: validator.update }),
+  controller.update
 );
 
 const authenticationRouter = r;

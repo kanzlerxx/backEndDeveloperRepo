@@ -23,7 +23,15 @@ class AuthenticationController extends BaseController {
   register = this.wrapper(async (req, res) => {
     const data = await this.#service.register(req.body);
     return this.ok(res, data, 'Registration successful');
+  });  
+  
+  update = this.wrapper(async (req, res) => {
+    const data = await this.#service.updateUser(req.body);
+    return this.ok(res, data, 'Registration successful');
   });
+
+
+
 
 }
 
