@@ -15,32 +15,36 @@ const errorHandler = (err, req, res, next) => {
     const uploaded = [];
 
     if (req.file) uploaded.push(req.file);
+
     if (req.files) {
-      if (typeof req.files === 'object')
+      if (typeof req.files === 'object') {
         Object.keys(req.files).forEach((field) => {
           req.files[field].forEach((file) => {
             uploaded.push(file);
           });
         });
-      else if (Array.isArray(req.files))
+      } else if (Array.isArray(req.files)) {
         req.files.forEach((file) => uploaded.push(file));
+      }
     }
 
-    if (uploaded.length)
+    // FIX: hanya unlink file yang punya path (diskStorage)
+    if (uploaded.length) {
       uploaded.forEach((up) => {
-        fs.unlink(up.path, (unlinkErr) => {
-          if (unlinkErr) {
-            console.error('ERR(file): ', unlinkErr);
-          }
-        });
+        if (up?.path) {
+          fs.unlink(up.path, (unlinkErr) => {
+            if (unlinkErr) {
+              console.error('ERR(file): ', unlinkErr);
+            }
+          });
+        }
       });
+    }
   }
 
   if (res.headersSent) {
     return next(err);
   }
-
-  // Contoh penanganan error spesifik dengan status code yang tepat
 
   if (err instanceof ValidationError) {
     return res.status(httpStatus.StatusCodes.BAD_REQUEST).json({
@@ -56,7 +60,6 @@ const errorHandler = (err, req, res, next) => {
   }
 
   if (err instanceof PrismaClientKnownRequestError) {
-    // Misal kita gunakan status BAD_REQUEST untuk error validasi Prisma
     return res.status(httpStatus.StatusCodes.BAD_REQUEST).json({
       errors: {
         status: httpStatus.StatusCodes.BAD_REQUEST,
@@ -82,12 +85,12 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Default: gunakan statusCode yang tersedia atau INTERNAL_SERVER_ERROR
   const statusCode =
     err.http_code ||
     err.statusCode ||
     httpStatus.StatusCodes.INTERNAL_SERVER_ERROR ||
     500;
+
   res.status(statusCode);
   return res.json({
     errors: {

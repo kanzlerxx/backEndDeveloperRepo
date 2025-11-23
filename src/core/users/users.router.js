@@ -36,7 +36,7 @@ r.post(
   r.put(
         "/update-photo", 
          auth(),
-        upload.single("photo"), 
+        upload.single("photo_profile"), 
         controller.updateProfilePhoto
       );
     

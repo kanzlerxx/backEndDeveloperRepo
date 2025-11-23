@@ -1,67 +1,86 @@
-import BaseService from "../../base/service.base.js";
-import prisma from '../../config/prisma.db.js';
+  import BaseService from "../../base/service.base.js";
+  import prisma from "../../config/prisma.db.js";
+  import { createClient } from "@supabase/supabase-js";
+  import { NotFound } from "../../exceptions/catch.execption.js";
 
-class usersService extends BaseService {
-  constructor() {
-    super(prisma);
-  }
+  const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE // atau ANON_KEY tergantung kebutuhan
+  );
 
-  findAll = async (query) => {
-    const q = this.transformBrowseQuery(query);
-    const data = await this.db.users.findMany({ ...q });
-
-    if (query.paginate) {
-      const countData = await this.db.users.count({ where: q.where });
-      return this.paginate(data, countData, q);
+  class usersService extends BaseService {
+    constructor() {
+      super(prisma);
     }
-    return data;
-  };
 
-  findById = async (id) => {
-    const data = await this.db.users.findUnique({ where: { id } });
-    return data;
-  };
+    findAll = async (query) => {
+      const q = this.transformBrowseQuery(query);
+      const data = await this.db.users.findMany({ ...q });
 
-  create = async (payload) => {
-    const data = await this.db.users.create({ data: payload });
-    return data;
-  };
+      if (query.paginate) {
+        const countData = await this.db.users.count({ where: q.where });
+        return this.paginate(data, countData, q);
+      }
+      return data;
+    };
 
-  update = async (id, payload) => {
-    const data = await this.db.users.update({ where: { id }, data: payload });
-    return data;
-  };
+    findById = async (id) => {
+      const data = await this.db.users.findUnique({ where: { id } });
+      return data;
+    };
 
-  
-  updateProfilePhoto = async (id, file) => {
+    create = async (payload) => {
+      const data = await this.db.users.create({ data: payload });
+      return data;
+    };
+
+    update = async (id, payload) => {
+      const data = await this.db.users.update({ where: { id }, data: payload });
+      return data;
+    };
+
+    
+    updateProfilePhoto = async (id, file) => {
   const user = await this.db.users.findUnique({ where: { id } });
   if (!user) throw new NotFound("User not found");
 
-  // 1. jika foto lama adalah custom, hapus
-  if (user.photo && !user.photo.includes("default")) {
-    await supabase.storage.from("profiles").remove([ user.photo ]);
+  // 🔥 Hapus foto lama jika ada
+  if (user.profile_image && !user.profile_image.includes("default")) {
+    const relativePath = user.profile_image.replace(
+      `${process.env.SUPABASE_URL}/storage/v1/object/public/photo_profile/`,
+      ""
+    );
+
+    await supabase.storage.from("photo_profile").remove([relativePath]);
   }
 
-  // 2. upload foto baru
+  // 🔥 Upload foto baru
   const uploadPath = `users/${id}-${Date.now()}`;
   const { data, error } = await supabase.storage
-    .from("profiles")
-    .upload(uploadPath, file.buffer);
+    .from("photo_profile")
+    .upload(uploadPath, file.buffer, {
+      contentType: file.mimetype,
+      upsert: false,
+    });
 
-  // 3. ambil public URL
-  const url = supabase.storage.from("profiles").getPublicUrl(uploadPath).data.publicUrl;
+  if (error) throw new Error("Upload failed: " + error.message);
 
-  // 4. update database
+  const url = supabase.storage
+    .from("photo_profile")
+    .getPublicUrl(uploadPath).data.publicUrl;
+
+  // 🔥 Update database
   return await this.db.users.update({
     where: { id },
-    data: { photo: url },
+    data: { profile_image: url },
   });
 };
 
-  delete = async (id) => {
-    const data = await this.db.users.delete({ where: { id } });
-    return data;
-  };
-}
 
-export default usersService;  
+    delete = async (id) => {
+      const data = await this.db.users.delete({ where: { id } });
+      return data;
+    };
+  }
+
+  export default usersService;  
