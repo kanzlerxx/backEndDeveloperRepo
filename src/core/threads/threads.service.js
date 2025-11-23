@@ -80,6 +80,8 @@ class threadsService extends BaseService {
     return data;
   };
 
+
+
   delete = async (id) => {
     const data = await this.db.threads.delete({ where: { id } });
     return data;

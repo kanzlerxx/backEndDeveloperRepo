@@ -26,6 +26,13 @@ r.post(
   validatorMiddleware({ body: validator.register }),
   controller.register
 );
+r.put(
+  '/register',
+  auth(),
+  validatorMiddleware({ body: validator.register }),
+  controller.register
+);
+
 
 const authenticationRouter = r;
 export default authenticationRouter;

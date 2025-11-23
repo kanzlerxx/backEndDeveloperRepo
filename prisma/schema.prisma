@@ -88,6 +88,12 @@ model likes {
   @@unique([user_id, threads_id])
 }
 
+model role_users {
+  id         Int     @id @default(autoincrement())
+  roles_name String? @db.VarChar(10)
+  users      users[]
+}
+
 model threads {
   id                  Int                @id @default(autoincrement())
   user_id             Int
@@ -124,13 +130,14 @@ model users {
   report           Int?               @db.SmallInt
   duration         DateTime?          @db.Timestamptz(6)
   created_at       DateTime?          @default(now()) @db.Timestamptz(6)
-  roles            role_user?         @default(user)
+  id_role          Int?
   bookmark_content bookmark_content[]
   comments         comments[]
   follow           follow[]
   forum            forum[]
   likes            likes[]
   threads          threads[]
+  role_users       role_users?        @relation(fields: [id_role], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "users_roles_fkey")
 }
 
 enum role_user {

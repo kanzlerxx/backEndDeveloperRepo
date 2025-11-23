@@ -4,6 +4,7 @@
   import threadsValidator from "./threads.validator.js";
   import { baseValidator } from "../../base/validator.base.js";
   import auth from "../../middlewares/auth.middleware.js";
+  
 
   const r = Router(),
     validator = threadsValidator,
@@ -43,6 +44,9 @@ r.get(
       validatorMiddleware({ body: validator.update }),
       controller.update
       );
+
+    
+
       
   r.delete("/delete/:id", auth(['ADMIN']), controller.delete);
 

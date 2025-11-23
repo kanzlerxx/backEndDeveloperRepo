@@ -8,10 +8,29 @@ class forumService extends BaseService {
 
   findAll = async (query) => {
     const q = this.transformBrowseQuery(query);
-    const data = await this.db.forum.findMany({ ...q });
+    const forums = await this.db.forum.findMany({
+      ...q,
+      include: {
+        _count: {
+          select: {
+            threads: true,
+            follow: true,
+          },
+        },
+      },
+    });
+
+    const data = forums.map((forum) => {
+      const { _count, ...rest } = forum;
+      return {
+        ...rest,
+        forum_total_threads: _count.threads,
+        forum_total_follower: _count.follow,
+      };
+    });
 
     if (query.paginate) {
-      const countData = await this.db.forum.count({ where: q.where});
+      const countData = await this.db.forum.count({ where: q.where });
       return this.paginate(data, countData, q);
     }
     return data;
