@@ -1,30 +1,38 @@
-import BaseController from '../../base/controller.base.js';
-import { NotFound } from '../../exceptions/catch.execption.js';
-import AuthenticationService from './authentication.service.js';
+  import BaseController from '../../base/controller.base.js';
+  import { NotFound } from '../../exceptions/catch.execption.js';
+  import AuthenticationService from './authentication.service.js';
 
-class AuthenticationController extends BaseController {
-  #service;
+  class AuthenticationController extends BaseController {
+    #service;
 
-  constructor() {
-    super();
-    this.#service = new AuthenticationService();
+    constructor() {
+      super();
+      this.#service = new AuthenticationService();
+    }
+
+    login = this.wrapper(async (req, res) => {
+      const data = await this.#service.login(req.body);
+      return this.ok(res, data, 'Selamat Kamu Telah Berhasil Login');
+    });
+
+    refresh = this.wrapper(async (req, res) => {
+      const data = await this.#service.refreshToken(req.body.refresh_token);
+      return this.ok(res, data, 'Login successful');
+    });
+
+    register = this.wrapper(async (req, res) => {
+      const data = await this.#service.register(req.body);
+      return this.ok(res, data, 'Registration successful');
+    });  
+    
+    update = this.wrapper(async (req, res) => {
+      const data = await this.#service.updateUser(req.body);
+      return this.ok(res, data, 'Registration successful');
+    });
+
+
+
+
   }
 
-  login = this.wrapper(async (req, res) => {
-    const data = await this.#service.login(req.body);
-    return this.ok(res, data, 'Login successful');
-  });
-
-  refresh = this.wrapper(async (req, res) => {
-    const data = await this.#service.refreshToken(req.body.refresh_token);
-    return this.ok(res, data, 'Login successful');
-  });
-
-  register = this.wrapper(async (req, res) => {
-    const data = await this.#service.register(req.body);
-    return this.ok(res, data, 'Registration successful');
-  });
-
-}
-
-export default AuthenticationController;
+  export default AuthenticationController;

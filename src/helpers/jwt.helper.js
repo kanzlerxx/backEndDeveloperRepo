@@ -1,7 +1,15 @@
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const privateKey = fs.readFileSync('secrets/private.pem', 'utf8');
+// Fix untuk ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Path absolut ke file private.pem
+const privateKeyPath = path.resolve(__dirname, '../../secrets/private.pem');
+const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
 
 export const generateAccessToken = async (user) => {
   const payload = {

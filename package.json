@@ -3,12 +3,16 @@
   "version": "1.0.0",
   "main": "src/index.js",
   "type": "module",
+  
   "scripts": {
     "start": "nodemon src/index.js",
     "db:seed": "node prisma/seeders/seed.js",
     "train": "node src/learning/training/training.model.js",
-    "watch": "node src/learning/training/watchAndRetrain.js"
+    "watch": "node src/learning/training/watchAndRetrain.js",
+    "postinstall": "prisma generate",
+    "build": "echo 'Building server'"
   },
+  
   "prisma": {
     "seed": "node prisma/seeders/seed.js"
   },

@@ -121,7 +121,7 @@ model threads_hashtags {
 
 model users {
   id               Int                @id @default(autoincrement())
-  username         String?            @db.VarChar(50)
+  username         String             @unique(map: "unique_username") @db.VarChar(50)
   email            String             @unique(map: "unique_email") @db.VarChar(255)
   password         String             @db.VarChar(255)
   profile_image    String?            @db.VarChar(300)
@@ -140,6 +140,15 @@ model users {
   role_users       role_users?        @relation(fields: [id_role], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "users_roles_fkey")
 }
 
+<<<<<<< HEAD
+=======
+model role_users {
+  id         Int     @id @default(autoincrement())
+  roles_name String? @db.VarChar(10)
+  users      users[]
+}
+
+>>>>>>> 466281be6dc3fdf9c7df3a30d818b5732999ea87
 enum role_user {
   user
   admin

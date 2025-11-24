@@ -32,7 +32,7 @@ app.use(
     limit: '50mb',
     type: ['application/json', 'application/vnd.api+json'],
   })
-);
+);  
 app.use(
   bodyParser.urlencoded({
     limit: '50mb',

@@ -37,7 +37,7 @@ class forumService extends BaseService {
   };
 
   findById = async (id) => {
-    const data = await this.db.forum.findUnique({ where: { id } });
+    const data = await this.db.forum.findUnique({   where: { id: Number(id)} });
     return data;
   };
 

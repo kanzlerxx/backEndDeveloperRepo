@@ -3,8 +3,10 @@ const fs = require('fs');
 const { Client } = require('pg');
 
 
-// Load CA certificate
-const ca = fs.readFileSync(process.env.PG_SSL_CA).toString();
+// Load CA certificate yang digunakan untuk SSL
+const path = require('path');
+const caPath = path.resolve(__dirname, '../certs/ca.pem');
+const ca = fs.readFileSync(caPath, 'utf8');
 
 
 let client; // Singleton instance
