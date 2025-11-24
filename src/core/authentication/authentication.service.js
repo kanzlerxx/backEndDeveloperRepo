@@ -87,6 +87,7 @@
       email: user.email,
       profile_image: user.profile_image,
       bio: user.bio,
+      id_role: user.id_role,
       status: user.status,
       created_at: user.created_at,
     };
