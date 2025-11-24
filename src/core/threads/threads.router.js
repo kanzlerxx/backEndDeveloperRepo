@@ -1,37 +1,54 @@
-import { Router } from "express";
-import validatorMiddleware from "../../middlewares/validator.middleware.js";
-import threadsController from "./threads.controller.js";
-import threadsValidator from "./threads.validator.js";
-import { baseValidator } from "../../base/validator.base.js";
-import auth from "../../middlewares/auth.middleware.js";
+  import { Router } from "express";
+  import validatorMiddleware from "../../middlewares/validator.middleware.js";
+  import threadsController from "./threads.controller.js";
+  import threadsValidator from "./threads.validator.js";
+  import { baseValidator } from "../../base/validator.base.js";
+  import auth from "../../middlewares/auth.middleware.js";
+  
 
-const r = Router(),
-  validator = threadsValidator,
-  controller = new threadsController();
+  const r = Router(),
+    validator = threadsValidator,
+    controller = new threadsController();
 
-r.get(
-  "/show-all",
+  r.get(
+    "/show-all",
+    validatorMiddleware({ query: baseValidator.browseQuery }),
+    controller.findAll
+  );
+
+  r.get(
+  "/show-random",
   validatorMiddleware({ query: baseValidator.browseQuery }),
-  controller.findAll
+  controller.findAllRandom
 );
 
-r.get("/show-one/:id", controller.findById);
+// Threads by user
+r.get(
+  "/show-by-user/:user_id",
+  validatorMiddleware({ query: baseValidator.browseQuery }),
+  controller.findByUserId
+);
 
-r.post(
-  "/create",
-  auth(['ADMIN']),
-  validatorMiddleware({ body: validator.create }),
-  controller.create
-  );
-  
-  r.put(
-    "/update/:id",
+  r.get("/show-one/:id", controller.findById);
+
+  r.post(
+    "/create",
     auth(['ADMIN']),
-    validatorMiddleware({ body: validator.update }),
-    controller.update
+    validatorMiddleware({ body: validator.create }),
+    controller.create
     );
     
-r.delete("/delete/:id", auth(['ADMIN']), controller.delete);
+    r.put(
+      "/update/:id",
+      auth(['ADMIN']),
+      validatorMiddleware({ body: validator.update }),
+      controller.update
+      );
 
-const threadsRouter = r;
-export default threadsRouter;
+    
+
+      
+  r.delete("/delete/:id", auth(['ADMIN']), controller.delete);
+
+  const threadsRouter = r;
+  export default threadsRouter;

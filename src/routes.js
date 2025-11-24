@@ -1,7 +1,9 @@
 import express from 'express';
 import authenticationRouter from './core/authentication/authentication.router.js';
 import forumRouter from './core/forum/forum.router.js';
-import threads from './core/forum/forum.router.js';
+import threads from './core/threads/threads.router.js';
+import kategoriRouter from './core/kategori/kategori.router.js';
+import usersRouter from './core/users/users.router.js';
 const router = express.Router();
 
 
@@ -17,6 +19,14 @@ export const routeLists = [
     {
         path : '/threads',
         route: threads
+    },
+    {
+        path : '/kategori',
+        route: kategoriRouter
+    },
+    {
+        path : '/users',
+        route: usersRouter
     }
 
 ]

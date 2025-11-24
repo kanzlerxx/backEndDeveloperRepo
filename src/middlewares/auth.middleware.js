@@ -5,6 +5,7 @@ import { Unauthenticated } from '../exceptions/catch.execption.js';
 import prisma from '../config/prisma.db.js';
 
 export default function auth(roles) {
+  
   return async (req, res, next) => {
     try {
       // Extract token from authorization header 
@@ -40,10 +41,14 @@ export default function auth(roles) {
       }
       
       // Find user by decoded token
-      const user = await prisma.users.findFirst({
-        where: { id: decoded.userId },
-        include: { roles: true } // Get role relations
-      });
+    const user = await prisma.users.findFirst({
+  where: { id: decoded.userId },
+  include: {
+    role_users: true
+  }
+})
+
+
       
       if (!user) {
         return next(
@@ -57,7 +62,7 @@ export default function auth(roles) {
       
       // If roles parameter is provided, check is user has related role or not
       if (roles && roles.length > 0) {
-        const userRoleCodes = user.roles.map(role => role.code);
+        const userRoleCodes = user.role_users.map(r => r.roles.code);
         const hasAccess = roles.some(allowedRole => userRoleCodes.includes(allowedRole));
         if (!hasAccess) {
           return next(

@@ -1,7 +1,9 @@
+import dotenv from 'dotenv'
+dotenv.config()  // HARUS PALING ATAS sebelum import apapun
+
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-import dotenv from 'dotenv';
 import httpStatus from 'http-status-codes';
 import fs from 'fs';
 import path from 'path';
@@ -11,8 +13,9 @@ import router from './routes.js';
 import handleError from './exceptions/handler.exception.js';
 
 
+
 const app = express();
-dotenv.config();
+
 
 app.disable('x-powered-by');
 app.use(
