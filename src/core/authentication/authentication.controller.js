@@ -12,7 +12,7 @@
 
     login = this.wrapper(async (req, res) => {
       const data = await this.#service.login(req.body);
-      return this.ok(res, data, 'Login successful');
+      return this.ok(res, data, 'Selamat Kamu Telah Berhasil Login');
     });
 
     refresh = this.wrapper(async (req, res) => {
