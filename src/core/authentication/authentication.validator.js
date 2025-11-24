@@ -2,6 +2,7 @@ import Joi from "joi";
 import constant from '../../config/constant.js';
 
 export const authenticationValidator = {
+
   login: Joi.object({
   identifier: Joi.string().required(),
   password: Joi.string().required(),
