@@ -1,42 +1,41 @@
 import BaseController from "../../base/controller.base.js";
 import { NotFound } from "../../exceptions/catch.execption.js";
-import forumService from "./forum.service.js";
+import categoriesService from "./categories.service.js";
 
-class forumController extends BaseController {
+class categoriesController extends BaseController {
   #service;
 
   constructor() {
     super();
-    this.#service = new forumService();
+    this.#service = new categoriesService();
   }
 
   findAll = this.wrapper(async (req, res) => {
     const data = await this.#service.findAll(req.query);
-    return this.ok(res, data, "forums successfully retrieved");
+    return this.ok(res, data, "categoriess successfully retrieved");
   });
 
   findById = this.wrapper(async (req, res) => {
     const data = await this.#service.findById(req.params.id);
-    if (!data) throw new NotFound("forum not found");
+    if (!data) throw new NotFound("categories not found");
 
-    return this.ok(res, data, "forum successfully retrieved");
+    return this.ok(res, data, "categories successfully retrieved");
   });
-
 
   create = this.wrapper(async (req, res) => {
     const data = await this.#service.create(req.body);
-    return this.created(res, data, "forum successfully created");
+    return this.created(res, data, "categories successfully created");
   });
 
   update = this.wrapper(async (req, res) => {
     const data = await this.#service.update(req.params.id, req.body);
-    return this.ok(res, data, "forum successfully updated");
+    return this.ok(res, data, "categories successfully updated");
   });
 
   delete = this.wrapper(async (req, res) => {
     const data = await this.#service.delete(req.params.id);
-    return this.noContent(res, "forum successfully deleted");
+    return this.noContent(res, "categories successfully deleted");
   });
 }
 
-export default forumController;
+export default categoriesController;
