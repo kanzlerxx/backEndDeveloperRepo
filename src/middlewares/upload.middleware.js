@@ -1,6 +1,10 @@
 import multer from 'multer';
 import fs from 'fs';
 import { BadRequest, catchResponse } from '../exceptions/catch.execption.js';
+const storage = multer.memoryStorage();
+
+
+
 
 /**
  * @param {'./uploads' | './public'} basePath
@@ -71,3 +75,4 @@ const uploadMany =
   };
 
 export { uploadMany };
+export const upload = multer({ storage });

@@ -1,6 +1,9 @@
 const express = require('express');
 const db = require('./db');
+import dotenv from 'dotenv'
+dotenv.config()
 
+import server from './server.js' 
 
 const app = express();
 
