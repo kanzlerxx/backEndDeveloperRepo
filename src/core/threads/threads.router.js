@@ -56,7 +56,7 @@ import multer from "multer";
 
   r.delete(
     "/delete/:id",
-    auth(['ADMIN', 'USER']),
+    auth(),
     controller.delete
   );
 

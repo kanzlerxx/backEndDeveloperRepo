@@ -4,12 +4,19 @@
   import jwt, { decode } from 'jsonwebtoken';
   import { generateAccessToken, generateRefreshToken,} from '../../helpers/jwt.helper.js';
   import prisma from '../../config/prisma.db.js';
+  import { createClient } from '@supabase/supabase-js';
 
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE // atau ANON_KEY tergantung kebutuhan
+    );
+  
   class AuthenticationService extends BaseService {
     constructor() {
       super(prisma);
     }
 
+    
   login = async (payload) => {
     const { identifier, password } = payload;
 
@@ -56,46 +63,70 @@
       return { user: this.exclude(user, ['password', 'isVerified']), token: {access_token, refresh_token} };
     };
 
-  register = async (payload) => {
-    const { username, email, password, profile_image, bio } = payload || {};
+register = async (payload) => {
+  const { username, email, password, bio } = payload || {};
 
-    // VALIDASI INPUT
-    if (!email) throw new BadRequest("Email is required");
-    if (!password) throw new BadRequest("Password is required");
+  // VALIDASI INPUT
+  if (!email) throw new BadRequest("Email is required");
+  if (!password) throw new BadRequest("Password is required");
 
-    // CEK EMAIL
-    const existing = await this.db.users.findUnique({
-      where: { email },
-    });
-    if (existing) throw new Forbidden("Email already registered");
+  // CEK EMAIL
+  const existing = await this.db.users.findUnique({ where: { email } });
+  if (existing) throw new Forbidden("Email already registered");
 
-    // INSERT
-    const user = await this.db.users.create({
-      data: {
-        username,
-        email,
-        password: await hash(password, 10),
-        profile_image: profile_image ?? null,
-        bio: bio ?? null,
-      },
-    });
+  // 🔥 Ambil daftar avatar dari Supabase folder new_avatar
+  const { data: files, error: listError } = await supabase.storage
+    .from("image")
+    .list("new_avatar", { limit: 100 });
 
-    // SANITIZED RETURN
-    const sanitized = {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      profile_image: user.profile_image,
-      bio: user.bio,
-      status: user.status,
-      created_at: user.created_at,
-    };
+  if (listError) {
+    console.error(listError);
+    throw new Error("Failed to load random avatars");
+  }
 
-    return {
-      data: sanitized,
-      message: "Account successfully registered",
-    };
+  if (!files || files.length === 0) {
+    throw new Error("No avatars found in Supabase folder 'new_avatar'");
+  }
+
+  // 🔥 Pilih avatar secara random
+  const randomFile = files[Math.floor(Math.random() * files.length)].name;
+
+  // 🔥 Buat public URL
+  const { data: publicURLData } = supabase.storage
+    .from("image")
+    .getPublicUrl(`new_avatar/${randomFile}`);
+
+  const randomAvatarUrl = publicURLData.publicUrl;
+
+  // 🔥 INSERT USER
+  const user = await this.db.users.create({
+    data: {
+      username,
+      email,
+      password: await hash(password, 10),
+      profile_image: randomAvatarUrl,
+      bio: bio ?? null,
+    },
+  });
+
+  // SANITIZED RETURN
+  const sanitized = {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    profile_image: user.profile_image,
+    bio: user.bio,
+    id_role: user.id_role,
+    status: user.status,
+    created_at: user.created_at,
   };
+
+  return {
+    data: sanitized,
+    message: "Account successfully registered",
+  };
+};
+
 
   updateUser = async (id, payload) => {
     const { username, bio, profile_image } = payload;
