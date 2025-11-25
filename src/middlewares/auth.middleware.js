@@ -4,6 +4,7 @@ import { verifyToken } from '../helpers/jwt.helper.js';
 import { Unauthenticated } from '../exceptions/catch.execption.js';
 import prisma from '../config/prisma.db.js';
 
+
 export default function auth(roles) {
   
   return async (req, res, next) => {

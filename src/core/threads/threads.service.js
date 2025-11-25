@@ -1,9 +1,50 @@
 import BaseService from "../../base/service.base.js";
-import prisma from '../../config/prisma.db.js';
+import prisma from "../../config/prisma.db.js";
+import { createClient } from "@supabase/supabase-js";
+import { NotFound } from "../../exceptions/catch.execption.js";
+import { error } from "console";
+
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE
+);
 
 class threadsService extends BaseService {
   constructor() {
     super(prisma);
+  }
+
+  async uploadImage(file, thread_id) {
+    if (!file) return null;
+
+    const uploadPath = `thumbnail/${thread_id}-${Date.now()}`;
+
+    const { data, error } = await supabase.storage
+      .from("image")
+      .upload(uploadPath, file.buffer, {
+        contentType: file.mimetype,
+      });
+
+    if (error) throw new Error("Upload failed: " + error.message);
+
+    return supabase.storage
+      .from("image")
+      .getPublicUrl(uploadPath).data.publicUrl;
+  }
+
+  async deleteOldImage(url) {
+    if (!url) return;
+
+    const relativePath = url.replace(
+      `${process.env.SUPABASE_URL}/storage/v1/object/public/image/`,
+      ""
+    );
+
+    // hanya hapus jika foldernya "threads/"
+    if (relativePath.startsWith("thumbnail/")) {
+      await supabase.storage.from("image").remove([relativePath]);
+    }
   }
 
   findAll = async (query) => {
@@ -70,21 +111,135 @@ class threadsService extends BaseService {
     return data;
   };
 
-  create = async (payload) => {
-    const data = await this.db.threads.create({ data: payload });
-    return data;
+  create = async (payload, file, user_id) => {
+  if (!user_id) {
+    throw new Error("user_id tidak boleh undefined");
+  }
+
+  const thread = await this.db.threads.create({
+    data: {
+      ...payload,
+      forum_id: null,
+      user_id: user_id,
+    },
+  });
+
+  if (file) {
+    const url = await this.uploadImage(file, thread.id);
+
+    await this.db.threads.update({
+      where: { id: thread.id },
+      data: { threads_thumbnail: url },
+    });
+
+    thread.threads_thumbnail = url;
+  }
+
+  return thread;
+};
+
+
+
+  createThreadsInForum = async (user_id, forum_id, payload, file) => {
+    // cek apakah user follow forum tersebut
+    const isFollow = await this.db.follow.findFirst({
+      where: {
+        user_id: Number(user_id),
+        following_forum_id: Number(forum_id),
+      },
+    });
+
+    // if (!isFollow) {
+    //   throw new error("User must follow the forum before posting.");
+    // }
+
+    const thread = await this.db.threads.create({
+      data: {
+        ...payload,
+        forum_id: Number(forum_id),
+        user_id: Number(user_id),
+      },
+    });
+
+    if (file) {
+      const url = await this.uploadImage(file, thread.id);
+      await this.db.threads.update({
+        where: { id: thread.id },
+        data: { threads_thumbnail: url },
+      });
+      thread.threads_thumbnail = url;
+    }
+
+    return thread;
   };
 
-  update = async (id, payload) => {
-    const data = await this.db.threads.update({ where: { id }, data: payload });
-    return data;
-  };
+  update = async (id, payload, file) => {
+  const thread = await this.db.threads.findUnique({
+    where: { id: Number(id) },
+  });
+
+  if (!thread) throw new NotFound("Thread not found");
+
+  // Build data update ONLY from non-empty fields
+  const data = {};
+
+  if (payload.threads_title && payload.threads_title.trim() !== "") {
+    data.threads_title = payload.threads_title;
+  }
+
+  if (payload.threads_concern && payload.threads_concern.trim() !== "") {
+    data.threads_concern = payload.threads_concern;
+  }
+
+  if (
+    payload.threads_description &&
+    payload.threads_description.trim() !== ""
+  ) {
+    data.threads_description = payload.threads_description;
+  }
+
+  // If no file sent → just update text fields
+  if (!file) {
+    const updated = await this.db.threads.update({
+      where: { id: Number(id) },
+      data,
+    });
+    return updated;
+  }
+
+  // If file exists → delete old image
+  if (thread.threads_thumbnail) {
+    await this.deleteOldImage(thread.threads_thumbnail);
+  }
+
+  // Upload new image
+  const url = await this.uploadImage(file, id);
+
+  const updatedWithImage = await this.db.threads.update({
+    where: { id: Number(id) },
+    data: {
+      ...data,
+      threads_thumbnail: url,
+    },
+  });
+
+  return updatedWithImage;
+};
 
 
 
   delete = async (id) => {
-    const data = await this.db.threads.delete({ where: { id } });
-    return data;
+    const thread = await this.db.threads.findUnique({ where: { id } });
+    if (!thread) throw new NotFound("Thread not found");
+
+    // Hapus foto jika ada
+    if (thread.thumbnail) {
+      await this.deleteOldImage(thread.thumbnail);
+    }
+
+    await this.db.threads.delete({ where: { id } });
+
+    return { message: "Thread deleted" };
   };
 }
 

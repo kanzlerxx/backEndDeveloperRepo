@@ -44,20 +44,25 @@
   const user = await this.db.users.findUnique({ where: { id } });
   if (!user) throw new NotFound("User not found");
 
-  // 🔥 Hapus foto lama jika ada
-  if (user.profile_image && !user.profile_image.includes("default")) {
-    const relativePath = user.profile_image.replace(
-      `${process.env.SUPABASE_URL}/storage/v1/object/public/photo_profile/`,
-      ""
-    );
+  // Hapus foto lama jika ada
+if (user.profile_image && !user.profile_image.includes("default")) {
+  // Ambil relative path dari URL Supabase
+  const relativePath = user.profile_image.replace(
+    `${process.env.SUPABASE_URL}/storage/v1/object/public/image/`,
+    ""
+  );
 
-    await supabase.storage.from("photo_profile").remove([relativePath]);
+  // Hanya hapus jika foto berada di folder users/
+  if (relativePath.startsWith("users/")) {
+    await supabase.storage.from("image").remove([relativePath]);
   }
+}
 
-  // 🔥 Upload foto baru
+
+  // Upload foto baru
   const uploadPath = `users/${id}-${Date.now()}`;
   const { data, error } = await supabase.storage
-    .from("photo_profile")
+    .from("image")
     .upload(uploadPath, file.buffer, {
       contentType: file.mimetype,
       upsert: false,
@@ -66,10 +71,10 @@
   if (error) throw new Error("Upload failed: " + error.message);
 
   const url = supabase.storage
-    .from("photo_profile")
+    .from("image")
     .getPublicUrl(uploadPath).data.publicUrl;
 
-  // 🔥 Update database
+  // Update database
   return await this.db.users.update({
     where: { id },
     data: { profile_image: url },
