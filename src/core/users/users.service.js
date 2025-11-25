@@ -45,19 +45,19 @@
   if (!user) throw new NotFound("User not found");
 
   // 🔥 Hapus foto lama jika ada
-  if (user.profile_image && !user.profile_image.includes("default")) {
-    const relativePath = user.profile_image.replace(
-      `${process.env.SUPABASE_URL}/storage/v1/object/public/photo_profile/`,
-      ""
-    );
+  // if (user.profile_image && !user.profile_image.includes("default")) {
+  //   const relativePath = user.profile_image.replace(
+  //     `${process.env.SUPABASE_URL}/storage/v1/object/public/photo_profile/`,
+  //     ""
+  //   );
 
-    await supabase.storage.from("photo_profile").remove([relativePath]);
-  }
+  //   await supabase.storage.from("photo_profile").remove([relativePath]);
+  // }
 
   // 🔥 Upload foto baru
   const uploadPath = `users/${id}-${Date.now()}`;
   const { data, error } = await supabase.storage
-    .from("photo_profile")
+    .from("image")
     .upload(uploadPath, file.buffer, {
       contentType: file.mimetype,
       upsert: false,
@@ -66,7 +66,7 @@
   if (error) throw new Error("Upload failed: " + error.message);
 
   const url = supabase.storage
-    .from("photo_profile")
+    .from("image")
     .getPublicUrl(uploadPath).data.publicUrl;
 
   // 🔥 Update database
