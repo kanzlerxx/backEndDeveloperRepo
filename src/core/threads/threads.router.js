@@ -4,8 +4,10 @@
   import threadsValidator from "./threads.validator.js";
   import { baseValidator } from "../../base/validator.base.js";
   import auth from "../../middlewares/auth.middleware.js";
+import multer from "multer";
   
-
+  const upload = multer();
+  
   const r = Router(),
     validator = threadsValidator,
     controller = new threadsController();
@@ -17,38 +19,46 @@
   );
 
   r.get(
-  "/show-random",
-  validatorMiddleware({ query: baseValidator.browseQuery }),
-  controller.findAllRandom
-);
+    "/show-random",
+    validatorMiddleware({ query: baseValidator.browseQuery }),
+    controller.findAllRandom
+  );
 
 // Threads by user
-r.get(
-  "/show-by-user/:user_id",
-  validatorMiddleware({ query: baseValidator.browseQuery }),
-  controller.findByUserId
-);
+  r.get(
+    "/show-by-user/:user_id",
+    validatorMiddleware({ query: baseValidator.browseQuery }),
+    controller.findByUserId
+  );
 
   r.get("/show-one/:id", controller.findById);
 
   r.post(
     "/create",
-    auth(['ADMIN']),
-    validatorMiddleware({ body: validator.create }),
+    auth(),
+    upload.single("image"),
     controller.create
-    );
-    
-    r.put(
-      "/update/:id",
-      auth(['ADMIN']),
-      validatorMiddleware({ body: validator.update }),
-      controller.update
-      );
+  );
 
-    
-
+  r.post(
+    "/create/threads/:forum_id",
+    auth(),
+    upload.single("image"),
+    controller.createThreadsInForum
+  );
       
-  r.delete("/delete/:id", auth(['ADMIN']), controller.delete);
+  r.put(
+    "/update/:id",
+    auth(),
+    upload.single("image"),
+    controller.update
+  );
+
+  r.delete(
+    "/delete/:id",
+    auth(['ADMIN', 'USER']),
+    controller.delete
+  );
 
   const threadsRouter = r;
   export default threadsRouter;

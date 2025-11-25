@@ -33,19 +33,44 @@
     });
 
     create = this.wrapper(async (req, res) => {
-      const data = await this.#service.create(req.body);
-      return this.created(res, data, "threads successfully created");
-    });
+  const file = req.file || null;
+  const user_id = req.user.id;
 
-    update = this.wrapper(async (req, res) => {
-      const data = await this.#service.update(req.params.id, req.body);
-      return this.ok(res, data, "threads successfully updated");
-    });
+  const data = await this.#service.create(
+    req.body, 
+    file, 
+    user_id
+  );
 
-    delete = this.wrapper(async (req, res) => {
-      const data = await this.#service.delete(req.params.id);
-      return this.noContent(res, "threads successfully deleted");
-    });
+  return this.created(res, data, "Thread created");
+});
+
+
+    createThreadsInForum = this.wrapper(async (req, res) => {
+    const file = req.file || null;
+    const userId = req.user.id; 
+    const { forum_id } = req.params;
+
+    const data = await this.#service.createThreadsInForum(
+      userId,
+      forum_id,
+      req.body,
+      file
+    );
+
+    return this.created(res, data, "Thread created in forum");
+  });
+
+  update = this.wrapper(async (req, res) => {
+    const file = req.file || null;
+    const data = await this.#service.update(req.params.id, req.body, file);
+    return this.ok(res, data, "Thread updated");
+  });
+
+  delete = this.wrapper(async (req, res) => {
+    await this.#service.delete(req.params.id);
+    return this.noContent(res, "Thread deleted");
+  });
   }
 
   export default threadsController;

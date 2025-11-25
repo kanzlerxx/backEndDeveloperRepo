@@ -78,6 +78,16 @@ model hashtags {
   threads_hashtags threads_hashtags[]
 }
 
+model like_threads {
+  id         Int     @id(map: "likes_pkey") @default(autoincrement())
+  user_id    Int
+  threads_id Int
+  threads    threads @relation(fields: [threads_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "likes_threads_id_fkey")
+  users      users   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "likes_user_id_fkey")
+
+  @@unique([user_id, threads_id], map: "likes_user_id_threads_id_key")
+}
+
 model role_users {
   id         Int     @id @default(autoincrement())
   roles_name String? @db.VarChar(10)
@@ -91,11 +101,11 @@ model threads {
   threads_thumbnail   String?            @db.VarChar(255)
   threads_description String?            @db.VarChar(255)
   threads_concern     String?            @db.VarChar(100)
-  forum_id            Int
+  forum_id            Int?
   bookmark_list       bookmark_list[]
   comments            comments[]
   like_threads        like_threads[]
-  forum               forum              @relation(fields: [forum_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  forum               forum?             @relation(fields: [forum_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users               users              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   threads_hashtags    threads_hashtags[]
 }
@@ -128,16 +138,6 @@ model users {
   like_threads     like_threads[]
   threads          threads[]
   role_users       role_users?        @relation(fields: [id_role], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "users_roles_fkey")
-}
-
-model like_threads {
-  id         Int     @id(map: "likes_pkey") @default(autoincrement())
-  user_id    Int
-  threads_id Int
-  threads    threads @relation(fields: [threads_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "likes_threads_id_fkey")
-  users      users   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "likes_user_id_fkey")
-
-  @@unique([user_id, threads_id], map: "likes_user_id_threads_id_key")
 }
 
 enum role_user {
