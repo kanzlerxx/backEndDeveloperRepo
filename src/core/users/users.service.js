@@ -25,10 +25,7 @@
     };
 
     findById = async (id) => {
-    const data = await this.db.users.findUnique({
-  where: { id: Number(id) }
-});
-
+      const data = await this.db.users.findUnique({ where: { id } });
       return data;
     };
 
@@ -55,10 +52,11 @@ if (user.profile_image && !user.profile_image.includes("default")) {
     ""
   );
 
-    await supabase.storage.from("photo_profile").remove([relativePath]);
+  // Hanya hapus jika foto berada di folder users/
+  if (relativePath.startsWith("users/")) {
+    await supabase.storage.from("image").remove([relativePath]);
   }
 }
->>>>>>>>> Temporary merge branch 2
 
 
   // Upload foto baru
