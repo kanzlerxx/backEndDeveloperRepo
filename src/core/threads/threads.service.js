@@ -47,22 +47,26 @@ class threadsService extends BaseService {
     }
   }
 
-  findAll = async (query) => {
-    const q = this.transformBrowseQuery(query);
+ findAll = async (query) => {
+  const q = this.transformBrowseQuery(query);
 
-  //    if (query.paginate) {
-  //   const page = parseInt(query.page) || 1;
-  //   q.take = 5;
-  //   q.skip = (page - 1) * 5;  
-  // }
+  delete q.take;
+  delete q.skip;
 
-  const data = await this.db.threads.findMany({ ...q });
-  // const countData = await this.db.threads.count({ where: q.where });
-  // return this.paginate(data, countData, q);
+  return await prisma.threads.findMany({
+    ...q,
+    select: {
+      id: true,
+      user_id: true,
+      threads_title: true,
+      threads_thumbnail: true,
+      threads_description: true,
+      threads_concern: true,
+      forum_id: true,
+    }
+  });
+};
 
-  return data;
-
-  };
 
   findAllRandom = async (query) => {
     const page = parseInt(query.page) || 1;
@@ -107,7 +111,10 @@ class threadsService extends BaseService {
   };
 
   findById = async (id) => {
-    const data = await this.db.threads.findUnique({ where: { id } });
+    const data = await this.db.threads.findUnique({
+  where: { id: Number(id) }
+});
+
     return data;
   };
 
