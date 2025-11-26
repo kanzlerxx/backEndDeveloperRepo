@@ -57,6 +57,9 @@ if (user.profile_image && !user.profile_image.includes("default")) {
 
     await supabase.storage.from("photo_profile").remove([relativePath]);
   }
+}
+>>>>>>>>> Temporary merge branch 2
+
 
   // Upload foto baru
   const uploadPath = `users/${id}-${Date.now()}`;

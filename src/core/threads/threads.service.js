@@ -3,6 +3,7 @@ import prisma from "../../config/prisma.db.js";
 import { createClient } from "@supabase/supabase-js";
 import { NotFound } from "../../exceptions/catch.execption.js";
 import { error } from "console";
+import { Forbidden } from "../../exceptions/catch.execption.js";
 
 
 const supabase = createClient(
@@ -156,9 +157,9 @@ class threadsService extends BaseService {
       },
     });
 
-    // if (!isFollow) {
-    //   throw new error("User must follow the forum before posting.");
-    // }
+    if (!isFollow) {
+      throw new forbidden("User must follow the forum before posting.");
+    }
 
     const thread = await this.db.threads.create({
       data: {
@@ -236,18 +237,24 @@ class threadsService extends BaseService {
 
 
   delete = async (id) => {
-    const thread = await this.db.threads.findUnique({ where: { id } });
-    if (!thread) throw new NotFound("Thread not found");
+  const thread = await this.db.threads.findUnique({
+    where: { id: Number(id) }, // ← FIX
+  });
 
-    // Hapus foto jika ada
-    if (thread.thumbnail) {
-      await this.deleteOldImage(thread.thumbnail);
-    }
+  if (!thread) throw new NotFound("Thread not found");
 
-    await this.db.threads.delete({ where: { id } });
+  // Hapus foto jika ada
+  if (thread.thumbnail) {
+    await this.deleteOldImage(thread.thumbnail);
+  }
 
-    return { message: "Thread deleted" };
-  };
+  await this.db.threads.delete({
+    where: { id: Number(id) }, // ← FIX
+  });
+
+  return { message: "Thread deleted" };
+};
+
 }
 
 export default threadsService;  
