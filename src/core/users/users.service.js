@@ -25,7 +25,7 @@
     };
 
     findById = async (id) => {
-      const data = await this.db.users.findUnique({ where: { id } });
+      const data = await this.db.users.findUnique({where: { id: Number(id) } });
       return data;
     };
 
