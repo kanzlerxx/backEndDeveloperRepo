@@ -1,7 +1,7 @@
 import BaseService from "../../base/service.base.js";
 import prisma from "../../config/prisma.db.js";
 import { createClient } from "@supabase/supabase-js";
-import { NotFound } from "../../exceptions/catch.execption.js";
+import { NotFound,BadRequest } from "../../exceptions/catch.execption.js";
 import { error } from "console";
 import { Forbidden } from "../../exceptions/catch.execption.js";
 
@@ -115,9 +115,42 @@ class threadsService extends BaseService {
     const data = await this.db.threads.findUnique({
   where: { id: Number(id) }
 });
-
     return data;
   };
+
+likeThread = async ({ thread_id, user_id }) => {
+  const thread = await this.db.threads.findUnique({
+    where: { id: thread_id }
+  });
+
+  if (!thread) throw new NotFound("Thread not found");
+
+  // cek apa user sudah like
+  const existingLike = await this.db.like_threads.findUnique({
+    where: {
+      user_id_threads_id: {
+        user_id,
+        threads_id: thread_id
+      }
+    }
+  });
+
+  if (existingLike) {
+    throw new BadRequest("You have already liked this thread");
+  }
+
+  // create like
+  const newLike = await this.db.like_threads.create({
+    data: {
+      user_id,
+      threads_id: thread_id
+    }
+  });
+
+  return newLike;
+};
+
+
 
   create = async (payload, file, user_id) => {
   if (!user_id) {
@@ -254,6 +287,40 @@ class threadsService extends BaseService {
 
   return { message: "Thread deleted" };
 };
+
+deleteAllByUser = async (user_id) => {
+  user_id = Number(user_id);
+
+  if (!user_id) throw new BadRequest("Invalid user_id");
+
+  // 1. Ambil semua thread milik user
+  const threads = await this.db.threads.findMany({
+    where: { user_id }
+  });
+
+  // Jika tidak ada thread → optional: lempar error atau return
+  if (!threads.length) {
+    return { message: "User has no threads to delete", count: 0 };
+  }
+
+  // 2. Hapus semua thumbnail yang ada
+  for (const thread of threads) {
+    if (thread.threads_thumbnail) {
+      await this.deleteOldImage(thread.threads_thumbnail);
+    }
+  }
+
+  // 3. Hapus semua threads milik user
+  await this.db.threads.deleteMany({
+    where: { user_id }
+  });
+
+  return {
+    message: "All user threads deleted successfully",
+    count: threads.length
+  };
+};
+
 
 }
 
