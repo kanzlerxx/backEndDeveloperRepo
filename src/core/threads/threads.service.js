@@ -1,9 +1,8 @@
 import BaseService from "../../base/service.base.js";
 import prisma from "../../config/prisma.db.js";
 import { createClient } from "@supabase/supabase-js";
-import { NotFound } from "../../exceptions/catch.execption.js";
 import { error } from "console";
-import { Forbidden } from "../../exceptions/catch.execption.js";
+import { Forbidden, NotFound, BadRequest } from '../../exceptions/catch.execption.js';
 
 
 const supabase = createClient(
@@ -34,30 +33,148 @@ class threadsService extends BaseService {
       .getPublicUrl(uploadPath).data.publicUrl;
   }
 
-  async deleteOldImage(url) {
-    if (!url) return;
+  // Upload multiple images - max 5
+// Upload multiple images - max 5
+async uploadMultipleImages(files, thread_id) {
+  if (!files || files.length === 0) return [];
 
-    const relativePath = url.replace(
-      `${process.env.SUPABASE_URL}/storage/v1/object/public/image/`,
-      ""
-    );
+  if (files.length > 5) {
+    throw new BadRequest("Maksimal 5 gambar diperbolehkan");
+  }
 
-    // hanya hapus jika foldernya "threads/"
-    if (relativePath.startsWith("thumbnail/")) {
-      await supabase.storage.from("image").remove([relativePath]);
+  const results = [];
+
+  for (const file of files) {
+    const uploadPath = `threads_image/${thread_id}-${Date.now()}-${Math.random()}`;
+
+    const { error: upErr } = await supabase.storage
+      .from("image")
+      .upload(uploadPath, file.buffer, {
+        contentType: file.mimetype,
+      });
+
+    if (upErr) {
+      console.error("Upload multiple error:", upErr);
+      throw new Error("Upload failed: " + upErr.message);
+    }
+
+    const url = supabase.storage.from("image").getPublicUrl(uploadPath).data.publicUrl;
+
+    // simpan ke DB — gunakan nama model dan kolom sesuai schema.prisma
+    const saved = await this.db.threads_images.create({
+      data: {
+        threads_id: Number(thread_id),
+        threads_images_url: url,
+      },
+    });
+
+    results.push(saved);
+  }
+
+  return results;
+}
+
+async updateThreadImages(thread_id, existingUrls = [], newFiles = []) {
+  // Ambil gambar lama dari DB
+  const oldImages = await this.db.threads_images.findMany({
+    where: { threads_id: Number(thread_id) }
+  });
+
+  // 1️⃣ Hapus gambar yang tidak ada lagi di existingUrls
+  for (const img of oldImages) {
+    if (!existingUrls.includes(img.threads_images_url)) {
+      await this.deleteOldImage(img.threads_images_url);
+      await this.db.threads_images.delete({
+        where: { id: img.id }
+      });
     }
   }
 
+  // 2️⃣ Upload gambar baru
+  if (newFiles && newFiles.length > 0) {
+   await this.uploadMultipleImages(newFiles, Number(thread_id));
+  }
+
+  return await this.db.threads_images.findMany({
+    where: { threads_id: Number(thread_id) }
+  });
+}
+
+
+
+  async deleteOldImage(url) {
+    if (!url) return { ok: true, message: "no url provided" };
+
+    try {
+      // 1) pastikan url berisi '/object/public/'
+      const parts = url.split("/object/public/");
+      if (parts.length < 2) {
+        console.warn("deleteOldImage: unexpected url format:", url);
+        return { ok: false, message: "unexpected url format" };
+      }
+
+      // hasil = "<bucket>/<path...>"
+      const pathAfterPublic = parts[1]; // e.g. "image/thumbnail/123-12345"
+      const [bucket, ...fileParts] = pathAfterPublic.split("/");
+      const filePath = fileParts.join("/");
+
+      if (!bucket || !filePath) {
+        console.warn("deleteOldImage: cannot extract bucket/filePath from:", pathAfterPublic);
+        return { ok: false, message: "cannot extract bucket/filePath" };
+      }
+
+      // Debug log
+      console.info("deleteOldImage -> bucket:", bucket, "filePath:", filePath);
+
+      // call supabase remove
+      const { error } = await supabase.storage.from(bucket).remove([filePath]);
+
+      if (error) {
+        console.error("deleteOldImage supabase error:", error);
+        return { ok: false, message: error.message || "supabase remove error", error };
+      }
+
+      return { ok: true, message: "deleted" };
+    } catch (err) {
+      console.error("deleteOldImage exception:", err);
+      return { ok: false, message: err.message || "exception" };
+    }
+  }
+
+  async deleteAllThreadImages(thread_id) {
+    console.log("🔥 MASUK deleteAllThreadImages, thread_id =", thread_id);
+  const images = await this.db.threads_images.findMany({
+    where: { threads_id: Number(thread_id) }
+  });
+
+  for (const img of images) {
+    await this.deleteOldImage(img.url); // Hapus dari Supabase
+  }
+
+  await this.db.threads_images.deleteMany({
+    where: { threads_id: Number(thread_id) }
+  });
+
+  return true;
+}
+
+
+
   findAll = async (query) => {
     const q = this.transformBrowseQuery(query);
-
   //    if (query.paginate) {
   //   const page = parseInt(query.page) || 1;
   //   q.take = 5;
   //   q.skip = (page - 1) * 5;  
   // }
 
-  const data = await this.db.threads.findMany();
+ const data = await this.db.threads.findMany({
+  
+  include: {
+    threads_images: true,
+  },
+});
+
   // const countData = await this.db.threads.count({ where: q.where });
   // return this.paginate(data, countData, q);
 
@@ -70,7 +187,12 @@ class threadsService extends BaseService {
     const limit = 5;
 
     // Ambil semua data dulu
-    let data = await this.db.threads.findMany();
+    let data = await this.db.threads.findMany({
+  include: {
+    threads_images: true,
+  },
+});
+
 
     // Randomize data
     data = data.sort(() => Math.random() - 0.5);
@@ -92,8 +214,12 @@ class threadsService extends BaseService {
     
 
     const data = await this.db.threads.findMany({
-      where: { user_id: Number(user_id) },
-    });
+  where: { user_id: Number(user_id) },
+  include: {
+    threads_images: true,
+  },
+});
+
 
     const count = await this.db.threads.count({
       where: { user_id: Number(user_id) },
@@ -112,10 +238,11 @@ class threadsService extends BaseService {
     return data;
   };
 
-  create = async (payload, file, user_id) => {
-  if (!user_id) {
-    throw new Error("user_id tidak boleh undefined");
-  }
+ create = async (payload, file, files, user_id) => {
+  const { threads_title, threads_description } = payload;
+
+  if (!threads_title) throw new BadRequest("Title is required");
+  if (!threads_description) throw new BadRequest("Description is required");
 
   const thread = await this.db.threads.create({
     data: {
@@ -125,128 +252,196 @@ class threadsService extends BaseService {
     },
   });
 
+  // Upload multiple images
+  if (files && files.length > 0) {
+    await this.uploadMultipleImages(files, thread.id);
+  }
+
+  // Upload thumbnail
   if (file) {
     const url = await this.uploadImage(file, thread.id);
-
     await this.db.threads.update({
       where: { id: thread.id },
       data: { threads_thumbnail: url },
     });
-
     thread.threads_thumbnail = url;
   }
 
-  return thread;
+    // Ambil semua images setelah create
+  const images = await this.db.threads_images.findMany({
+    where: { threads_id: thread.id },
+  });
+
+  return {
+    ...thread,
+    images,
+  };
 };
 
 
 
-  createThreadsInForum = async (user_id, forum_id, payload, file) => {
-    // cek apakah user follow forum tersebut
-    const isFollow = await this.db.follow.findFirst({
-      where: {
-        user_id: Number(user_id),
-        following_forum_id: Number(forum_id),
-      },
-    });
-
-    if (!isFollow) {
-      throw new forbidden("User must follow the forum before posting.");
-    }
-
-    const thread = await this.db.threads.create({
-      data: {
-        ...payload,
-        forum_id: Number(forum_id),
-        user_id: Number(user_id),
-      },
-    });
-
-    if (file) {
-      const url = await this.uploadImage(file, thread.id);
-      await this.db.threads.update({
-        where: { id: thread.id },
-        data: { threads_thumbnail: url },
-      });
-      thread.threads_thumbnail = url;
-    }
-
-    return thread;
-  };
-
-  update = async (id, payload, file) => {
-  const thread = await this.db.threads.findUnique({
-    where: { id: Number(id) },
-  });
-
-  if (!thread) throw new NotFound("Thread not found");
-
-  // Build data update ONLY from non-empty fields
-  const data = {};
-
-  if (payload.threads_title && payload.threads_title.trim() !== "") {
-    data.threads_title = payload.threads_title;
-  }
-
-  if (payload.threads_concern && payload.threads_concern.trim() !== "") {
-    data.threads_concern = payload.threads_concern;
-  }
-
-  if (
-    payload.threads_description &&
-    payload.threads_description.trim() !== ""
-  ) {
-    data.threads_description = payload.threads_description;
-  }
-
-  // If no file sent → just update text fields
-  if (!file) {
-    const updated = await this.db.threads.update({
-      where: { id: Number(id) },
-      data,
-    });
-    return updated;
-  }
-
-  // If file exists → delete old image
-  if (thread.threads_thumbnail) {
-    await this.deleteOldImage(thread.threads_thumbnail);
-  }
-
-  // Upload new image
-  const url = await this.uploadImage(file, id);
-
-  const updatedWithImage = await this.db.threads.update({
-    where: { id: Number(id) },
-    data: {
-      ...data,
-      threads_thumbnail: url,
+  createThreadsInForum = async (user_id, forum_id, payload, file, files) => {
+  const isFollow = await this.db.follow.findFirst({
+    where: {
+      user_id: Number(user_id),
+      following_forum_id: Number(forum_id),
     },
   });
 
-  return updatedWithImage;
+  if (!isFollow) throw new Forbidden("User must follow the forum before posting.");
+
+  const thread = await this.db.threads.create({
+    data: {
+      ...payload,
+      forum_id: Number(forum_id),
+      user_id: Number(user_id),
+    },
+  });
+
+  // Upload multiple images
+  if (files && files.length > 0) {
+    await this.uploadMultipleImages(files, thread.id);
+  }
+
+  // Upload thumbnail
+  if (file) {
+    const url = await this.uploadImage(file, thread.id);
+    await this.db.threads.update({
+      where: { id: thread.id },
+      data: { threads_thumbnail: url },
+    });
+    thread.threads_thumbnail = url;
+  }
+
+  const images = await this.db.threads_images.findMany({
+    where: { threads_id: thread.id },
+  });
+
+  // Return lengkap
+  return {
+    ...thread,
+    images,
+  };
 };
 
-
-
-  delete = async (id) => {
+ update = async (id, payload, file, files) => {
+  
   const thread = await this.db.threads.findUnique({
-    where: { id: Number(id) }, // ← FIX
+    where: { id: Number(id) },
   });
 
   if (!thread) throw new NotFound("Thread not found");
 
-  // Hapus foto jika ada
-  if (thread.thumbnail) {
-    await this.deleteOldImage(thread.thumbnail);
+  const title = payload.threads_title?.trim() ?? "";
+  const desc = payload.threads_description?.trim() ?? "";
+  const concernRaw = payload.threads_concern;
+  const concernClean =
+    concernRaw === undefined ||
+    concernRaw === null ||
+    (typeof concernRaw === "string" && concernRaw.trim() === "")
+      ? null
+      : concernRaw.trim();
+
+  const deleteImageFlag =
+    payload.deleteImage === true || payload.deleteImage === "true";
+
+  // Validation
+  if (
+    (title === "" || title === undefined) &&
+    (desc === "" || desc === undefined)
+  ) {
+    throw new BadRequest(
+      "threads_title dan threads_description tidak boleh kosong bersamaan"
+    );
   }
 
-  await this.db.threads.delete({
-    where: { id: Number(id) }, // ← FIX
+  const data = {};
+  if (title !== "") data.threads_title = title;
+  if (desc !== "") data.threads_description = desc;
+  data.threads_concern = concernClean;
+
+  // =============== THUMBNAIL HANDLING ===============
+  if (deleteImageFlag && !file) {
+    if (thread.threads_thumbnail) {
+      await this.deleteOldImage(thread.threads_thumbnail);
+    }
+    data.threads_thumbnail = null;
+  } else if (file) {
+    if (thread.threads_thumbnail) {
+      await this.deleteOldImage(thread.threads_thumbnail);
+    }
+    const newThumb = await this.uploadImage(file, id);
+    data.threads_thumbnail = newThumb;
+  }
+
+  // =============== MULTIPLE IMAGES UPDATE ===============
+  let existingImages = [];
+  if (payload.existingImages) {
+    try {
+      existingImages = JSON.parse(payload.existingImages);
+    } catch {}
+  }
+
+  const newImages = files?.images || [];
+
+  await this.updateThreadImages(id, existingImages, newImages);
+
+  // =============== UPDATE THREAD RECORD ===============
+  const updated = await this.db.threads.update({
+    where: { id: Number(id) },
+    data,
   });
 
-  return { message: "Thread deleted" };
+  // Ambil images final
+  const finalImages = await this.db.threads_images.findMany({
+    where: { threads_id: Number(id) },
+  });
+
+  return {
+    ...updated,
+    images: finalImages,
+  };
 };
+
+
+  // ---------------- delete ----------------
+ delete = async (id) => {
+  const threadId = Number(id);
+
+  // 1. Ambil SEMUA gambar sebelum DB dihapus
+  const images = await this.db.threads_images.findMany({
+    where: { threads_id: threadId }
+  });
+
+  console.log("📷 Jumlah thread images ditemukan:", images.length);
+
+  // 2. Hapus semua gambar dari Supabase
+  for (const img of images) {
+    if (img.threads_images_url) {
+      await this.deleteOldImage(img.threads_images_url);
+    }
+  }
+
+  // 3. Hapus thumbnail jika ada
+  const thread = await this.db.threads.findUnique({ where: { id: threadId } });
+  if (thread?.threads_thumbnail) {
+    await this.deleteOldImage(thread.threads_thumbnail);
+  }
+
+  // 4. Baru hapus DB images
+  await this.db.threads_images.deleteMany({
+    where: { threads_id: threadId }
+  });
+
+  // 5. Baru delete thread (di akhir)
+  await this.db.threads.delete({
+    where: { id: threadId }
+  });
+
+  return { message: "Thread deleted successfully" };
+};
+
+
 
 }
 
