@@ -159,28 +159,28 @@ async updateThreadImages(thread_id, existingUrls = [], newFiles = []) {
 }
 
 
-
-  findAll = async (query) => {
-    const q = this.transformBrowseQuery(query);
-  //    if (query.paginate) {
-  //   const page = parseInt(query.page) || 1;
-  //   q.take = 5;
-  //   q.skip = (page - 1) * 5;  
-  // }
-
- const data = await this.db.threads.findMany({
-  
-  include: {
-    threads_images: true,
-  },
-});
-
   // const countData = await this.db.threads.count({ where: q.where });
   // return this.paginate(data, countData, q);
+ findAll = async (query) => {
+  const q = this.transformBrowseQuery(query);
 
-  return data;
+  delete q.take;
+  delete q.skip;
 
-  };
+  return await prisma.threads.findMany({
+    ...q,
+    select: {
+      id: true,
+      user_id: true,
+      threads_title: true,
+      threads_thumbnail: true,
+      threads_description: true,
+      threads_concern: true,
+      forum_id: true,
+    }
+  });
+};
+
 
   findAllRandom = async (query) => {
     const page = parseInt(query.page) || 1;
@@ -234,15 +234,55 @@ async updateThreadImages(thread_id, existingUrls = [], newFiles = []) {
   };
 
   findById = async (id) => {
-    const data = await this.db.threads.findUnique({ where: { id } });
+    const data = await this.db.threads.findUnique({
+  where: { id: Number(id) }
+});
     return data;
   };
 
- create = async (payload, file, files, user_id) => {
+ 
+likeThread = async ({ thread_id, user_id }) => {
+  const thread = await this.db.threads.findUnique({
+    where: { id: thread_id }
+  });
+
+  if (!thread) throw new NotFound("Thread not found");
+
+  // cek apa user sudah like
+  const existingLike = await this.db.like_threads.findUnique({
+    where: {
+      user_id_threads_id: {
+        user_id,
+        threads_id: thread_id
+      }
+    }
+  });
+
+  if (existingLike) {
+    throw new BadRequest("You have already liked this thread");
+  }
+
+  // create like
+  const newLike = await this.db.like_threads.create({
+    data: {
+      user_id,
+      threads_id: thread_id
+    }
+  });
+
+  return newLike;
+};
+
+
+
+  create = async (payload, file, files, user_id) => {
   const { threads_title, threads_description } = payload;
 
   if (!threads_title) throw new BadRequest("Title is required");
   if (!threads_description) throw new BadRequest("Description is required");
+  if (!user_id) {
+    throw new Error("user_id tidak boleh undefined");
+  }
 
   const thread = await this.db.threads.create({
     data: {

@@ -32,6 +32,26 @@
       return this.ok(res, data, "threads successfully retrieved");
     });
 
+likeThread = this.wrapper(async (req, res) => {
+
+  const { thread_id } = req.body;
+
+  if (!thread_id) {
+    throw new BadRequest("thread_id is required");
+  }
+
+  const user_id = req.user?.id;
+  if (!user_id) throw new Forbidden("Unauthorized");
+
+  const data = await this.#service.likeThread({
+    thread_id: Number(thread_id),
+    user_id: Number(user_id)
+  });
+
+  return this.ok(res, data, "threads liked successfully");
+});
+
+
     create = this.wrapper(async (req, res) => {
   const file = req.files?.image?.[0] || null;
   const files = req.files?.images || [];
@@ -74,6 +94,15 @@
     await this.#service.delete(req.params.id);
     return this.noContent(res, "Thread deleted");
   });
+
+  deleteMyThreads = this.wrapper(async (req, res) => {
+  const user_id = req.user.id;
+
+  const result = await this.#service.deleteAllByUser(user_id);
+
+  return this.ok(res, result, "All your threads deleted");
+});
+
   }
 
   export default threadsController;

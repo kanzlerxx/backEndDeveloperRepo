@@ -42,6 +42,14 @@ import multer from "multer";
     ]),
     controller.create
   );
+ 
+
+  r.post(
+    "/like",
+    auth(),
+    controller.likeThread
+  );
+
 
   r.post(
     "/create/threads/:forum_id",
@@ -68,6 +76,13 @@ import multer from "multer";
     auth(),
     controller.delete
   );
+
+  r.delete(
+  "/delete-all",
+  auth(),
+  controller.deleteMyThreads
+);
+
 
   const threadsRouter = r;
   export default threadsRouter;

@@ -13,19 +13,28 @@
       super(prisma);
     }
 
-    findAll = async (query) => {
-      const q = this.transformBrowseQuery(query);
-      const data = await this.db.users.findMany({ ...q });
+   findAll = async (query) => {
+  const q = this.transformBrowseQuery(query);
 
-      if (query.paginate) {
-        const countData = await this.db.users.count({ where: q.where });
-        return this.paginate(data, countData, q);
-      }
-      return data;
-    };
+  // Hapus limit & offset agar semua data keluar
+  delete q.take;
+  delete q.skip;
+
+  // Jika paginate ON → tetap gunakan paginate
+  if (query.paginate) {
+    const data = await this.db.users.findMany({ ...q });
+    const countData = await this.db.users.count({ where: q.where });
+
+    return this.paginate(data, countData, q);
+  }
+
+  // Jika paginate OFF → tampilkan semua
+  return await this.db.users.findMany({ ...q });
+};
+
 
     findById = async (id) => {
-      const data = await this.db.users.findUnique({ where: { id } });
+      const data = await this.db.users.findUnique({where: { id: Number(id) } });
       return data;
     };
 
