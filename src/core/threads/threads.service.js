@@ -150,6 +150,42 @@ likeThread = async ({ thread_id, user_id }) => {
   return newLike;
 };
 
+unlikeThread = async ({ thread_id, user_id }) => {
+  // 1. Cek apakah thread ada
+  const thread = await this.db.threads.findUnique({
+    where: { id: thread_id },
+  });
+
+  if (!thread) throw new NotFound("Thread not found");
+
+  // 2. Cek apakah LIKE sudah ada
+  const existing = await this.db.like_threads.findUnique({
+    where: {
+      user_id_threads_id: {
+        user_id,
+        threads_id: thread_id,
+      },
+    },
+  });
+
+  if (!existing) {
+    throw new BadRequest("You have not liked this thread");
+  }
+
+  // 3. Hapus like (UNLIKE)
+  await this.db.like_threads.delete({
+    where: {
+      user_id_threads_id: {
+        user_id,
+        threads_id: thread_id,
+      },
+    },
+  });
+
+  return { message: "Thread unliked successfully" };
+};
+
+
 
 
   create = async (payload, file, user_id) => {
@@ -320,7 +356,7 @@ deleteAllByUser = async (user_id) => {
     count: threads.length
   };
 };
-
+ 
 
 }
 

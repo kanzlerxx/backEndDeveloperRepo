@@ -51,6 +51,26 @@ likeThread = this.wrapper(async (req, res) => {
   return this.ok(res, data, "threads liked successfully");
 });
 
+unlikeThread = this.wrapper(async (req, res) => {
+
+  const { thread_id } = req.body;
+
+  if (!thread_id) {
+    throw new BadRequest("thread_id is required");
+  }
+
+  const user_id = req.user?.id;
+  if (!user_id) throw new Forbidden("Unauthorized");
+
+  const data = await this.#service.unlikeThread({
+    thread_id: Number(thread_id),
+    user_id: Number(user_id)
+  });
+
+  return this.ok(res, data, "thread unliked successfully");
+});
+
+
 
     create = this.wrapper(async (req, res) => {
   const file = req.file || null;

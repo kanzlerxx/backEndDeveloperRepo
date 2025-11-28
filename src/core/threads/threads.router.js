@@ -42,7 +42,7 @@ import multer from "multer";
  
 
   r.post(
-    "/like",
+    "/liket",
     auth(),
     controller.likeThread
   );
@@ -72,6 +72,12 @@ import multer from "multer";
   "/delete-all",
   auth(),
   controller.deleteMyThreads
+);
+
+r.delete(
+  "/unlike",
+  auth(),
+  controller.unlikeThread
 );
 
 

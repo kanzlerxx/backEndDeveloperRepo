@@ -22,6 +22,39 @@ class forumController extends BaseController {
     return this.ok(res, data, "forum successfully retrieved");
   });
 
+  followForum = this.wrapper(async (req, res) => {
+  const { forum_id } = req.body;
+
+  if (!forum_id) throw new BadRequest("forum_id is required");
+
+  const user_id = req.user.id;
+
+  const data = await this.#service.followForum({
+    forum_id: Number(forum_id),
+    user_id: Number(user_id),
+  });
+
+  return this.ok(res, data);
+});
+
+
+
+
+unfollowForum = this.wrapper(async (req, res) => {
+  const { forum_id } = req.body;
+
+  if (!forum_id) throw new BadRequest("forum_id is required");
+
+  const user_id = req.user.id;
+
+  const data = await this.#service.unfollowForum({
+    forum_id: Number(forum_id),
+    user_id: Number(user_id),
+  });
+
+  return this.ok(res, data);
+});
+
 
   create = this.wrapper(async (req, res) => {
     const data = await this.#service.create(req.body);

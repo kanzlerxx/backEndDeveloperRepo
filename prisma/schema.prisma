@@ -34,16 +34,17 @@ model categories {
 }
 
 model comments {
-  id              Int        @id @default(autoincrement())
+  id              Int             @id @default(autoincrement())
   user_id         Int
   comment_desc    String
   threads_id      Int
   bind_to_comment Int?
-  uploaded_file   String?    @db.VarChar(255)
-  comments        comments?  @relation("commentsTocomments", fields: [bind_to_comment], references: [id], onUpdate: NoAction)
-  other_comments  comments[] @relation("commentsTocomments")
-  threads         threads    @relation(fields: [threads_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users           users      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  uploaded_file   String?         @db.VarChar(255)
+  comments        comments?       @relation("commentsTocomments", fields: [bind_to_comment], references: [id], onUpdate: NoAction)
+  other_comments  comments[]      @relation("commentsTocomments")
+  threads         threads         @relation(fields: [threads_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users           users           @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  like_comments   like_comments[]
 }
 
 model follow {
@@ -99,7 +100,7 @@ model threads {
   user_id             Int
   threads_title       String             @db.VarChar(255)
   threads_thumbnail   String?            @db.VarChar(255)
-  threads_description String?            @db.VarChar(255)
+  threads_description String?            @db.VarChar(1500)
   threads_concern     String?            @db.VarChar(100)
   forum_id            Int?
   bookmark_list       bookmark_list[]
@@ -108,6 +109,7 @@ model threads {
   forum               forum?             @relation(fields: [forum_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users               users              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   threads_hashtags    threads_hashtags[]
+  threads_images      threads_images[]
 }
 
 model threads_hashtags {
@@ -135,9 +137,26 @@ model users {
   comments         comments[]
   follow           follow[]
   forum            forum[]
+  like_comments    like_comments[]
   like_threads     like_threads[]
   threads          threads[]
   role_users       role_users?        @relation(fields: [id_role], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "users_roles_fkey")
+}
+
+model like_comments {
+  user_id    Int
+  comment_id Int
+  comments   comments @relation(fields: [comment_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([user_id, comment_id])
+}
+
+model threads_images {
+  id                 Int     @id @default(autoincrement())
+  threads_id         Int
+  threads_images_url String? @db.VarChar(255)
+  threads            threads @relation(fields: [threads_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 enum role_user {
