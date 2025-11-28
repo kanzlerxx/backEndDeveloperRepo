@@ -167,6 +167,12 @@ async updateThreadImages(thread_id, existingUrls = [], newFiles = []) {
   delete q.take;
   delete q.skip;
 
+   let data = await this.db.threads.findMany({
+  include: {
+    threads_images: true,
+  },
+});
+
   return await prisma.threads.findMany({
     ...q,
     select: {
@@ -177,6 +183,8 @@ async updateThreadImages(thread_id, existingUrls = [], newFiles = []) {
       threads_description: true,
       threads_concern: true,
       forum_id: true,
+      threads_images: true,
+
     }
   });
 };
