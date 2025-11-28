@@ -243,7 +243,10 @@ async updateThreadImages(thread_id, existingUrls = [], newFiles = []) {
 
   findById = async (id) => {
     const data = await this.db.threads.findUnique({
-  where: { id: Number(id) }
+  where: { id: Number(id) },
+  include: {
+    threads_images: true,
+  },
 });
     return data;
   };
