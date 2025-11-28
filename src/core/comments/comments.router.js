@@ -4,6 +4,10 @@ import commentsController from "./comments.controller.js";
 import commentsValidator from "./comments.validator.js";
 import { baseValidator } from "../../base/validator.base.js";
 import auth from "../../middlewares/auth.middleware.js";
+import multer from "multer";
+
+
+const upload = multer();
 
 const r = Router(),
   validator = commentsValidator,
@@ -19,10 +23,15 @@ r.get("/show-one/:id", controller.findById);
 
 r.post(
   "/create",
-  auth(['ADMIN']),
-  validatorMiddleware({ body: validator.create }),
-  controller.create
-  );
+  auth(),
+  upload.single("image"),  // <-- upload image comment
+  controller.createComment
+);
+
+r.post("/like", auth(), controller.likeComment);
+r.delete("/unlike", auth(), controller.unlikeComment);
+
+
   
   r.put(
     "/update/:id",

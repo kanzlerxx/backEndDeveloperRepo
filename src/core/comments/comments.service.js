@@ -1,5 +1,12 @@
 import BaseService from "../../base/service.base.js";
 import prisma from '../../config/prisma.db.js';
+import { createClient } from "@supabase/supabase-js";
+import { NotFound,BadRequest } from "../../exceptions/catch.execption.js";
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE
+);
 
 class commentsService extends BaseService {
   constructor() {
@@ -22,10 +29,122 @@ class commentsService extends BaseService {
     return data;
   };
 
-  create = async (payload) => {
-    const data = await this.db.comments.create({ data: payload });
-    return data;
+  createComment = async (payload, file, user_id) => {
+  const { comment_desc, threads_id, bind_to_comment } = payload;
+
+  if (!user_id) throw new BadRequest("Unauthorized");
+  if (!comment_desc) throw new BadRequest("comment_desc is required");
+  if (!threads_id) throw new BadRequest("threads_id is required");
+
+  // 1. Buat comment tanpa file dulu
+  const comment = await this.db.comments.create({
+    data: {
+      user_id,
+      comment_desc,
+      threads_id: Number(threads_id),
+      bind_to_comment: bind_to_comment ? Number(bind_to_comment) : null,
+    },
+  });
+
+  // 2. Kalau tidak ada file, return langsung
+  if (!file) return comment;
+
+  // 3. Upload file ke Supabase
+  const uploadPath = `comments/${comment.id}-${Date.now()}`;
+
+  const { data, error } = await supabase.storage
+    .from("image")
+    .upload(uploadPath, file.buffer, {
+      contentType: file.mimetype,
+    });
+
+  if (error) throw new Error("Upload failed: " + error.message);
+
+  const publicUrl = supabase.storage
+    .from("image")
+    .getPublicUrl(uploadPath).data.publicUrl;
+
+  // 4. Update comment dengan URL file
+  const updatedComment = await this.db.comments.update({
+    where: { id: comment.id },
+    data: { uploaded_file: publicUrl },
+  });
+
+  return updatedComment;
+};
+
+likeComment = async ({ comment_id, user_id }) => {
+  // 1. Pastikan comment ada
+  const comment = await this.db.comments.findUnique({
+    where: { id: comment_id }
+  });
+
+  if (!comment) throw new NotFound("Comment not found");
+
+  // 2. Cek apakah user sudah like
+  const existing = await this.db.like_comments.findUnique({
+    where: {
+      user_id_comment_id: {
+        user_id,
+        comment_id
+      }
+    }
+  });
+
+  if (existing) {
+    throw new BadRequest("You have already liked this comment");
+  }
+
+  // 3. Buat like baru
+  const newLike = await this.db.like_comments.create({
+    data: {
+      user_id,
+      comment_id
+    }
+  });
+
+  return {
+    message: "Comment liked successfully",
+    data: newLike
   };
+};
+
+unlikeComment = async ({ comment_id, user_id }) => {
+  // 1. Pastikan comment ada
+  const comment = await this.db.comments.findUnique({
+    where: { id: comment_id }
+  });
+
+  if (!comment) throw new NotFound("Comment not found");
+
+  // 2. Cek apakah user pernah like
+  const existing = await this.db.like_comments.findUnique({
+    where: {
+      user_id_comment_id: {
+        user_id,
+        comment_id
+      }
+    }
+  });
+
+  if (!existing) {
+    throw new BadRequest("You have not liked this comment");
+  }
+
+  // 3. Hapus like
+  await this.db.like_comments.delete({
+    where: {
+      user_id_comment_id: {
+        user_id,
+        comment_id
+      }
+    }
+  });
+
+  return {
+    message: "Comment unliked successfully"
+  };
+};
 
   update = async (id, payload) => {
     const data = await this.db.comments.update({ where: { id }, data: payload });
