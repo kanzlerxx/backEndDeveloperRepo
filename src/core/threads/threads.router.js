@@ -36,7 +36,10 @@ import multer from "multer";
   r.post(
     "/create",
     auth(),
-    upload.single("image"),
+    upload.fields([
+    { name: "images", maxCount: 5 },    
+    { name: "image", maxCount: 1 }
+    ]),
     controller.create
   );
  
@@ -51,14 +54,20 @@ import multer from "multer";
   r.post(
     "/create/threads/:forum_id",
     auth(),
-    upload.single("image"),
+    upload.fields([
+    { name: "images", maxCount: 5 },    
+    { name: "image", maxCount: 1 }
+  ]),
     controller.createThreadsInForum
   );
       
   r.put(
     "/update/:id",
     auth(),
-    upload.single("image"),
+    upload.fields([
+    { name: "images", maxCount: 5 },    
+    { name: "image", maxCount: 1 }
+  ]),
     controller.update
   );
 

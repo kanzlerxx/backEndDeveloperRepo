@@ -4,6 +4,8 @@ import forumController from "./forum.controller.js";
 import forumValidator from "./forum.validator.js";
 import { baseValidator } from "../../base/validator.base.js";
 import auth from "../../middlewares/auth.middleware.js";
+import multer from "multer";
+const upload = multer();
 
 const r = Router(),
   validator = forumValidator,
@@ -29,18 +31,24 @@ r.get("/show-one/:id", controller.findById);
 r.post(
   "/create",
   auth(),
-  validatorMiddleware({ body: validator.create }),
+  upload.fields([
+    { name: "forum_profile", maxCount: 1 },
+    { name: "forum_banner", maxCount: 1 },
+  ]),
   controller.create
-  );
-  
-  r.put(
-    "/update/:id",
-    auth(['ADMIN']),
-    validatorMiddleware({ body: validator.update }),
-    controller.update
-    );
+);
+
+r.put(
+  "/update/:id",
+  auth(),
+  upload.fields([
+    { name: "forum_profile", maxCount: 1 },
+    { name: "forum_banner", maxCount: 1 },
+  ]),
+  controller.update
+);
     
-r.delete("/delete/:id", auth(['ADMIN']), controller.delete);
+r.delete("/delete/:id", auth(), controller.delete);
 
 const forumRouter = r;
 export default forumRouter;

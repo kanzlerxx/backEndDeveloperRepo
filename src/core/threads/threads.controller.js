@@ -72,38 +72,41 @@ unlikeThread = this.wrapper(async (req, res) => {
 
 
 
-  create = this.wrapper(async (req, res) => {
-  const file = req.file || null;
+    create = this.wrapper(async (req, res) => {
+  const file = req.files?.image?.[0] || null;
+  const files = req.files?.images || [];
   const user_id = req.user.id;
 
-  const data = await this.#service.create(
-    req.body, 
-    file, 
-    user_id
-  );
+  const data = await this.#service.create(req.body, file, files, user_id);
 
   return this.created(res, data, "Thread created");
 });
 
 
+
     createThreadsInForum = this.wrapper(async (req, res) => {
-    const file = req.file || null;
-    const userId = req.user.id; 
-    const { forum_id } = req.params;
+  const file = req.files?.image?.[0] || null;
+  const files = req.files?.images || [];
+  const userId = req.user.id;
+  const { forum_id } = req.params;
 
-    const data = await this.#service.createThreadsInForum(
-      userId,
-      forum_id,
-      req.body,
-      file
-    );
+  const data = await this.#service.createThreadsInForum(
+    userId,
+    forum_id,
+    req.body,
+    file,
+    files
+  );
 
-    return this.created(res, data, "Thread created in forum");
-  });
+  return this.created(res, data, "Thread created in forum");
+});
+
 
   update = this.wrapper(async (req, res) => {
-    const file = req.file || null;
-    const data = await this.#service.update(req.params.id, req.body, file);
+    const file = req.files?.image?.[0] || null;
+    const files = req.files || {};
+    const data = await this.#service.update(req.params.id, req.body, file, files);
+
     return this.ok(res, data, "Thread updated");
   });
 
