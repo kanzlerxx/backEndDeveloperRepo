@@ -24,14 +24,40 @@ class forumController extends BaseController {
 
 
   create = this.wrapper(async (req, res) => {
-    const data = await this.#service.create(req.body);
-    return this.created(res, data, "forum successfully created");
-  });
+  const user = req.user; // hasil dari middleware auth()
 
-  update = this.wrapper(async (req, res) => {
-    const data = await this.#service.update(req.params.id, req.body);
-    return this.ok(res, data, "forum successfully updated");
-  });
+  if (!user) {
+    return this.unauthorized(res, "User tidak terautentikasi");
+  }
+
+  const { forum_profile, forum_banner } = req.files;
+
+  const data = await this.#service.create(
+    {
+      ...req.body,
+      user_id: user.id, // ⬅⬅ tambahkan ini!
+    },
+    forum_profile?.[0],
+    forum_banner?.[0]
+  );
+
+  return this.created(res, data, "forum successfully created");
+});
+
+
+update = this.wrapper(async (req, res) => {
+  const { forum_profile, forum_banner } = req.files;
+
+  const data = await this.#service.update(
+    req.params.id,
+    req.body,
+    forum_profile?.[0],
+    forum_banner?.[0]
+  );
+
+  return this.ok(res, data, "forum successfully updated");
+});
+
 
   delete = this.wrapper(async (req, res) => {
     const data = await this.#service.delete(req.params.id);
