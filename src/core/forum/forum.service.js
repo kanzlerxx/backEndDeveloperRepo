@@ -170,6 +170,95 @@ class forumService extends BaseService {
     return updated;
   };
 
+  followForum = async ({ forum_id, user_id }) => {
+  // 1. Cek apakah forum ada
+  const forum = await this.db.forum.findUnique({
+    where: { id: forum_id },
+  });
+
+  if (!forum) throw new NotFound("Forum not found");
+
+  // 2. Cek apakah user sudah follow
+  const existingFollow = await this.db.follow.findUnique({
+    where: {
+      user_id_following_forum_id: {
+        user_id,
+        following_forum_id: forum_id,
+      },
+    },
+  });
+
+  if (existingFollow) {
+    throw new BadRequest("You have already followed this forum");
+  }
+
+  // 3. Insert follow
+  await this.db.follow.create({
+    data: {
+      user_id,
+      following_forum_id: forum_id,
+    },
+  });
+
+  // 4. Update total follower
+  await this.db.forum.update({
+    where: { id: forum_id },
+    data: {
+      forum_total_follower: {
+        increment: 1,
+      },
+    },
+  });
+
+  return { message: "Forum followed successfully" };
+};
+
+unfollowForum = async ({ forum_id, user_id }) => {
+  // cek forum
+  const forum = await this.db.forum.findUnique({
+    where: { id: forum_id },
+  });
+
+  if (!forum) throw new NotFound("Forum not found");
+
+  // cek follow exist
+  const existingFollow = await this.db.follow.findUnique({
+    where: {
+      user_id_following_forum_id: {
+        user_id,
+        following_forum_id: forum_id,
+      },
+    },
+  });
+
+  if (!existingFollow) {
+    throw new BadRequest("You have not followed this forum");
+  }
+
+  // hapus follow
+  await this.db.follow.delete({
+    where: {
+      user_id_following_forum_id: {
+        user_id,
+        following_forum_id: forum_id,
+      },
+    },
+  });
+
+  // decrement followers
+  await this.db.forum.update({
+    where: { id: forum_id },
+    data: {
+      forum_total_follower: {
+        decrement: 1,
+      },
+    },
+  });
+
+  return { message: "Forum unfollowed successfully" };
+};
+
+
   delete = async (id) => {
     const forum = await this.db.forum.findUnique({
       where: { id: Number(id) },

@@ -18,6 +18,14 @@ r.get(
   controller.findAll
 );
 
+r.post("/follow", 
+  auth(),
+  controller.followForum);
+
+r.delete("/unfollow", 
+  auth(), 
+  controller.unfollowForum);
+
 r.get("/show-one/:id", controller.findById);
 
 r.post(
