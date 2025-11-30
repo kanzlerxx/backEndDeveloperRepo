@@ -73,11 +73,11 @@ unlikeThread = this.wrapper(async (req, res) => {
 
 
     create = this.wrapper(async (req, res) => {
-  const file = req.files?.image?.[0] || null;
-  const files = req.files?.images || [];
+  const thumbnail = req.files?.threads_thumbnail?.[0] || null;
+  const threads_images = req.files?.threads_images || [];
   const user_id = req.user.id;
 
-  const data = await this.#service.create(req.body, file, files, user_id);
+  const data = await this.#service.create(req.body, thumbnail, threads_images, user_id);
 
   return this.created(res, data, "Thread created");
 });
@@ -85,8 +85,8 @@ unlikeThread = this.wrapper(async (req, res) => {
 
 
     createThreadsInForum = this.wrapper(async (req, res) => {
-  const file = req.files?.image?.[0] || null;
-  const files = req.files?.images || [];
+  const threads_thumbnail = req.files?.threads_thumbnail?.[0] || null;
+  const threads_images = req.files?.threads_images || [];
   const userId = req.user.id;
   const { forum_id } = req.params;
 
@@ -94,8 +94,8 @@ unlikeThread = this.wrapper(async (req, res) => {
     userId,
     forum_id,
     req.body,
-    file,
-    files
+    threads_thumbnail,
+    threads_images
   );
 
   return this.created(res, data, "Thread created in forum");
@@ -103,12 +103,19 @@ unlikeThread = this.wrapper(async (req, res) => {
 
 
   update = this.wrapper(async (req, res) => {
-    const file = req.files?.image?.[0] || null;
-    const files = req.files || {};
-    const data = await this.#service.update(req.params.id, req.body, file, files);
+  const threads_thumbnail = req.files?.threads_thumbnail?.[0] || null;       // thumbnail baru
+  const threads_images = req.files?.threads_images || [];          // gambar baru (array)
 
-    return this.ok(res, data, "Thread updated");
-  });
+  const data = await this.#service.update(
+    req.params.id,
+    req.body,
+    threads_thumbnail,
+    { threads_images }                                      // ✔ KIRIM FORMAT YANG BENAR
+  );
+
+  return this.ok(res, data, "Thread updated");
+});
+
 
   delete = this.wrapper(async (req, res) => {
     await this.#service.delete(req.params.id);

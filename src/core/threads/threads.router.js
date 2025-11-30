@@ -37,8 +37,8 @@ import multer from "multer";
     "/create",
     auth(),
     upload.fields([
-    { name: "images", maxCount: 5 },    
-    { name: "image", maxCount: 1 }
+    { name: "threads_thumbnail", maxCount: 1 },    
+    { name: "threads_images", maxCount: 5 }
     ]),
     controller.create
   );
@@ -55,8 +55,8 @@ import multer from "multer";
     "/create/threads/:forum_id",
     auth(),
     upload.fields([
-    { name: "images", maxCount: 5 },    
-    { name: "image", maxCount: 1 }
+    { name: "threads_thumbnail", maxCount: 1 },    
+    { name: "threads_images", maxCount: 5 }
   ]),
     controller.createThreadsInForum
   );
@@ -65,8 +65,8 @@ import multer from "multer";
     "/update/:id",
     auth(),
     upload.fields([
-    { name: "images", maxCount: 5 },    
-    { name: "image", maxCount: 1 }
+    { name: "threads_thumbnail", maxCount: 1 },    
+    { name: "threads_images", maxCount: 5 }
   ]),
     controller.update
   );

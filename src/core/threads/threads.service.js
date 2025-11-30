@@ -15,15 +15,15 @@ class threadsService extends BaseService {
     super(prisma);
   }
 
-  async uploadImage(file, thread_id) {
-    if (!file) return null;
+  async uploadImage(thumbnail, thread_id) {
+    if (!thumbnail) return null;
 
     const uploadPath = `thumbnail/${thread_id}-${Date.now()}`;
 
     const { data, error } = await supabase.storage
       .from("image")
-      .upload(uploadPath, file.buffer, {
-        contentType: file.mimetype,
+      .upload(uploadPath, thumbnail.buffer, {
+        contentType: thumbnail.mimetype,
       });
 
     if (error) throw new Error("Upload failed: " + error.message);
@@ -35,22 +35,22 @@ class threadsService extends BaseService {
 
   // Upload multiple images - max 5
 // Upload multiple images - max 5
-async uploadMultipleImages(files, thread_id) {
-  if (!files || files.length === 0) return [];
+async uploadMultipleImages(threads_images, thread_id) {
+  if (!threads_images || threads_images.length === 0) return [];
 
-  if (files.length > 5) {
+  if (threads_images.length > 5) {
     throw new BadRequest("Maksimal 5 gambar diperbolehkan");
   }
 
   const results = [];
 
-  for (const file of files) {
+  for (const thumbnail of threads_images) {
     const uploadPath = `threads_image/${thread_id}-${Date.now()}-${Math.random()}`;
 
     const { error: upErr } = await supabase.storage
       .from("image")
-      .upload(uploadPath, file.buffer, {
-        contentType: file.mimetype,
+      .upload(uploadPath, thumbnail.buffer, {
+        contentType: thumbnail.mimetype,
       });
 
     if (upErr) {
@@ -74,7 +74,7 @@ async uploadMultipleImages(files, thread_id) {
   return results;
 }
 
-async updateThreadImages(thread_id, existingUrls = [], newFiles = []) {
+async updateThreadImages(thread_id, existingUrls = [], newThreadsImages = []) {
   // Ambil gambar lama dari DB
   const oldImages = await this.db.threads_images.findMany({
     where: { threads_id: Number(thread_id) }
@@ -91,8 +91,8 @@ async updateThreadImages(thread_id, existingUrls = [], newFiles = []) {
   }
 
   // 2️⃣ Upload gambar baru
-  if (newFiles && newFiles.length > 0) {
-   await this.uploadMultipleImages(newFiles, Number(thread_id));
+  if (newThreadsImages && newThreadsImages.length > 0) {
+   await this.uploadMultipleImages(newThreadsImages, Number(thread_id));
   }
 
   return await this.db.threads_images.findMany({
@@ -143,11 +143,11 @@ async updateThreadImages(thread_id, existingUrls = [], newFiles = []) {
 
   async deleteAllThreadImages(thread_id) {
     console.log("🔥 MASUK deleteAllThreadImages, thread_id =", thread_id);
-  const images = await this.db.threads_images.findMany({
+  const threads_images = await this.db.threads_images.findMany({
     where: { threads_id: Number(thread_id) }
   });
 
-  for (const img of images) {
+  for (const img of threads_images) {
     await this.deleteOldImage(img.url); // Hapus dari Supabase
   }
 
@@ -322,8 +322,22 @@ unlikeThread = async ({ thread_id, user_id }) => {
 
 
 
-  create = async (payload, file, files, user_id) => {
+  create = async (payload, thumbnail, threads_images, user_id) => {
   const { threads_title, threads_description } = payload;
+
+  if (!threads_images || threads_images.length === 0) {
+  threads_images = [];
+}
+
+
+  if (payload.threads_thumbnail === "" || payload.threads_thumbnail === undefined) {
+  payload.threads_thumbnail = null;
+}
+
+ if (payload.threads_images === "" || payload.threads_images === undefined) {
+  delete payload.threads_images;
+}
+
 
   if (!threads_title) throw new BadRequest("Title is required");
   if (!threads_description) throw new BadRequest("Description is required");
@@ -340,13 +354,13 @@ unlikeThread = async ({ thread_id, user_id }) => {
   });
 
   // Upload multiple images
-  if (files && files.length > 0) {
-    await this.uploadMultipleImages(files, thread.id);
+  if (threads_images && threads_images.length > 0) {
+    await this.uploadMultipleImages(threads_images, thread.id);
   }
 
   // Upload thumbnail
-  if (file) {
-    const url = await this.uploadImage(file, thread.id);
+  if (thumbnail) {
+    const url = await this.uploadImage(thumbnail, thread.id);
     await this.db.threads.update({
       where: { id: thread.id },
       data: { threads_thumbnail: url },
@@ -355,25 +369,31 @@ unlikeThread = async ({ thread_id, user_id }) => {
   }
 
     // Ambil semua images setelah create
-  const images = await this.db.threads_images.findMany({
+  const threads_images_create = await this.db.threads_images.findMany({
     where: { threads_id: thread.id },
   });
 
   return {
     ...thread,
-    images,
+    threads_images_create,
   };
 };
  
 
 
-  createThreadsInForum = async (user_id, forum_id, payload, file, files) => {
+  createThreadsInForum = async (user_id, forum_id, payload, thumbnail, threads_images) => {
+    if (!threads_images || threads_images.length === 0) {
+  threads_images = [];
+}
+
   const isFollow = await this.db.follow.findFirst({
     where: {
       user_id: Number(user_id),
       following_forum_id: Number(forum_id),
     },
   });
+
+  
 
   if (!isFollow) throw new Forbidden("User must follow the forum before posting.");
 
@@ -386,13 +406,13 @@ unlikeThread = async ({ thread_id, user_id }) => {
   });
 
   // Upload multiple images
-  if (files && files.length > 0) {
-    await this.uploadMultipleImages(files, thread.id);
+  if (threads_images && threads_images.length > 0) {
+    await this.uploadMultipleImages(threads_images, thread.id);
   }
 
   // Upload thumbnail
-  if (file) {
-    const url = await this.uploadImage(file, thread.id);
+  if (thumbnail) {
+    const url = await this.uploadImage(thumbnail, thread.id);
     await this.db.threads.update({
       where: { id: thread.id },
       data: { threads_thumbnail: url },
@@ -400,18 +420,18 @@ unlikeThread = async ({ thread_id, user_id }) => {
     thread.threads_thumbnail = url;
   }
 
-  const images = await this.db.threads_images.findMany({
+  const threads_images_create = await this.db.threads_images.findMany({
     where: { threads_id: thread.id },
   });
 
   // Return lengkap
   return {
     ...thread,
-    images,
+    threads_images_create,
   };
 };
 
- update = async (id, payload, file, files) => {
+ update = async (id, payload, thumbnail, threads_images) => {
   
   const thread = await this.db.threads.findUnique({
     where: { id: Number(id) },
@@ -433,31 +453,24 @@ unlikeThread = async ({ thread_id, user_id }) => {
     payload.deleteImage === true || payload.deleteImage === "true";
 
   // Validation
-  if (
-    (title === "" || title === undefined) &&
-    (desc === "" || desc === undefined)
-  ) {
-    throw new BadRequest(
-      "threads_title dan threads_description tidak boleh kosong bersamaan"
-    );
-  }
+  // Tidak usah validasi wajib dua duanya
+const data = {};
+if (payload.threads_title !== undefined) data.threads_title = title;
+if (payload.threads_description !== undefined) data.threads_description = desc;
+data.threads_concern = concernClean;
 
-  const data = {};
-  if (title !== "") data.threads_title = title;
-  if (desc !== "") data.threads_description = desc;
-  data.threads_concern = concernClean;
 
   // =============== THUMBNAIL HANDLING ===============
-  if (deleteImageFlag && !file) {
+  if (deleteImageFlag && !thumbnail) {
     if (thread.threads_thumbnail) {
       await this.deleteOldImage(thread.threads_thumbnail);
     }
     data.threads_thumbnail = null;
-  } else if (file) {
+  } else if (thumbnail) {
     if (thread.threads_thumbnail) {
       await this.deleteOldImage(thread.threads_thumbnail);
     }
-    const newThumb = await this.uploadImage(file, id);
+    const newThumb = await this.uploadImage(thumbnail, id);
     data.threads_thumbnail = newThumb;
   }
 
@@ -469,9 +482,11 @@ unlikeThread = async ({ thread_id, user_id }) => {
     } catch {}
   }
 
-  const newImages = files?.images || [];
+ const newImages = threads_images?.threads_images || [];
 
-  await this.updateThreadImages(id, existingImages, newImages);
+await this.updateThreadImages(id, existingImages, newImages);
+
+
 
   // =============== UPDATE THREAD RECORD ===============
   const updated = await this.db.threads.update({
@@ -486,7 +501,7 @@ unlikeThread = async ({ thread_id, user_id }) => {
 
   return {
     ...updated,
-    images: finalImages,
+    threads_images: finalImages,
   };
 };
 
@@ -500,10 +515,10 @@ unlikeThread = async ({ thread_id, user_id }) => {
     where: { threads_id: threadId }
   });
 
-  console.log("📷 Jumlah thread images ditemukan:", images.length);
+  console.log("📷 Jumlah thread images ditemukan:", threads_images.length);
 
   // 2. Hapus semua gambar dari Supabase
-  for (const img of images) {
+  for (const img of threads_images) {
     if (img.threads_images_url) {
       await this.deleteOldImage(img.threads_images_url);
     }
