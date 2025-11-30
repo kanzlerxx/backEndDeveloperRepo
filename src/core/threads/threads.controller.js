@@ -65,8 +65,8 @@ likeThread = this.wrapper(async (req, res) => {
 
 
     createThreadsInForum = this.wrapper(async (req, res) => {
-  const file = req.files?.threads_image?.[0] || null;
-  const files = req.files?.threads_images || [];
+  const threads_thumbnail = req.files?.threads_thumbnail?.[0] || null;
+  const threads_images = req.files?.threads_images || [];
   const userId = req.user.id;
   const { forum_id } = req.params;
 
@@ -74,8 +74,8 @@ likeThread = this.wrapper(async (req, res) => {
     userId,
     forum_id,
     req.body,
-    file,
-    files
+    threads_thumbnail,
+    threads_images
   );
 
   return this.created(res, data, "Thread created in forum");
@@ -83,13 +83,13 @@ likeThread = this.wrapper(async (req, res) => {
 
 
   update = this.wrapper(async (req, res) => {
-  const file = req.files?.threads_thumbnail?.[0] || null;       // thumbnail baru
+  const threads_thumbnail = req.files?.threads_thumbnail?.[0] || null;       // thumbnail baru
   const threads_images = req.files?.threads_images || [];          // gambar baru (array)
 
   const data = await this.#service.update(
     req.params.id,
     req.body,
-    file,
+    threads_thumbnail,
     { threads_images }                                      // ✔ KIRIM FORMAT YANG BENAR
   );
 

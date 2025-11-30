@@ -446,14 +446,10 @@ data.threads_concern = concernClean;
     } catch {}
   }
 
-  // HANYA update images jika salah satu: 
-// 1. existingImages dikirim
-// 2. ada new images 
-const newImages = threads_images;
+ const newImages = threads_images?.threads_images || [];
 
-if (payload.existingImages !== undefined || newImages !== undefined) {
-  await this.updateThreadImages(id, existingImages, newImages ?? []);
-}
+await this.updateThreadImages(id, existingImages, newImages);
+
 
 
   // =============== UPDATE THREAD RECORD ===============
