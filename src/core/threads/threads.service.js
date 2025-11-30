@@ -273,14 +273,29 @@ findAll = async (query) => {
 
 
   findById = async (id) => {
-    const data = await this.db.threads.findUnique({
-  where: { id: Number(id) },
-  include: {
-    threads_images: true,
-  },
-});
-    return data;
-  };
+  const data = await this.db.threads.findUnique({
+    where: { id: Number(id) },
+    include: {
+      threads_images: true,
+
+      like_threads: true,
+
+      comments: {
+        include: {
+          users: true,     // biasanya relasinya sama: users
+        },
+      },
+    },
+  });
+
+  if (!data) return null;
+
+  delete data._count;
+
+  return data;
+};
+
+
 
  
 likeThread = async ({ thread_id, user_id }) => {
