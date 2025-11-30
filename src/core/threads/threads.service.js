@@ -161,85 +161,116 @@ async updateThreadImages(thread_id, existingUrls = [], newThreadsImages = []) {
 
   // const countData = await this.db.threads.count({ where: q.where });
   // return this.paginate(data, countData, q);
- findAll = async (query) => {
+findAll = async (query) => {
   const q = this.transformBrowseQuery(query);
 
   delete q.take;
   delete q.skip;
 
-   let data = await this.db.threads.findMany({
-  include: {
-    threads_images: true,
-  },
-});
-
-  return await prisma.threads.findMany({
+  return await this.db.threads.findMany({
     ...q,
-    select: {
-      id: true,
-      user_id: true,
-      threads_title: true,
-      threads_thumbnail: true,
-      threads_description: true,
-      threads_concern: true,
-      forum_id: true,
+    include: {
       threads_images: true,
-
-    }
-  });
+      _count: {
+        select: {
+          like_threads: true,
+          comments: true,
+        },
+      },
+    },
+  }).then(data =>
+    data.map(item => {
+      const { _count, ...rest } = item;
+      return {
+        ...rest,
+        total_likes_threads: _count.like_threads,
+        total_comments_threads: _count.comments,
+      };
+    })
+  );
 };
 
 
-  findAllRandom = async (query) => {
-    const page = parseInt(query.page) || 1;
-    const limit = 5;
 
-    // Ambil semua data dulu
-    let data = await this.db.threads.findMany({
-  include: {
-    threads_images: true,
-  },
-});
+ findAllRandom = async (query) => {
+  const page = parseInt(query.page) || 1;
+  const limit = 5;
 
+  let data = await this.db.threads.findMany({
+    include: {
+      threads_images: true,
+      _count: {
+        select: {
+          like_threads: true,
+          comments: true,
+        },
+      },
+    },
+  });
 
-    // Randomize data
-    data = data.sort(() => Math.random() - 0.5);
-
-    // Paginate
-    const start = (page - 1) * limit;
-    const paginated = data.slice(start, start + limit);
-
+  // mapping + hapus _count
+  data = data.map(item => {
+    const { _count, ...rest } = item;
     return {
-      data: paginated,
-      total: data.length,
-      page,
-      totalPages: Math.ceil(data.length / limit),
+      ...rest,
+      total_likes_threads: _count.like_threads,
+      total_comments_threads: _count.comments,
     };
+  });
+
+  // Shuffle
+  data = data.sort(() => Math.random() - 0.5);
+
+  // Paginate
+  const start = (page - 1) * limit;
+  const paginated = data.slice(start, start + limit);
+
+  return {
+    data: paginated,
+    total: data.length,
+    page,
+    totalPages: Math.ceil(data.length / limit),
   };
-
-  findByUserId = async (user_id, query) => {
-    const page = parseInt(query.page) || 1;
-    
-
-    const data = await this.db.threads.findMany({
-  where: { user_id: Number(user_id) },
-  include: {
-    threads_images: true,
-  },
-});
+};
 
 
-    const count = await this.db.threads.count({
-      where: { user_id: Number(user_id) },
-    });
+ findByUserId = async (user_id, query) => {
+  const page = parseInt(query.page) || 1;
 
+  const data = await this.db.threads.findMany({
+    where: { user_id: Number(user_id) },
+    include: {
+      threads_images: true,
+      _count: {
+        select: {
+          like_threads: true,
+          comments: true,
+        },
+      },
+    },
+  });
+
+  const finalData = data.map(item => {
+    const { _count, ...rest } = item;
     return {
-      data,
-      total: count,
-      page,
-      totalPages: Math.ceil(count),
+      ...rest,
+      total_likes_threads: _count.like_threads,
+      total_comments_threads: _count.comments,
     };
+  });
+
+  const count = await this.db.threads.count({
+    where: { user_id: Number(user_id) },
+  });
+
+  return {
+    data: finalData,
+    total: count,
+    page,
+    totalPages: Math.ceil(count),
   };
+};
+
 
   findById = async (id) => {
     const data = await this.db.threads.findUnique({
