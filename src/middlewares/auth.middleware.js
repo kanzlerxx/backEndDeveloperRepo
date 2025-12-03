@@ -3,15 +3,16 @@ import { ApiError } from '../exceptions/errors.exception.js';
 import { verifyToken } from '../helpers/jwt.helper.js';
 import { Unauthenticated } from '../exceptions/catch.execption.js';
 import prisma from '../config/prisma.db.js';
+import { decrypt } from "../helpers/encryption.helper.js";
 
 export default function auth(roles) {
 
   return async (req, res, next) => {
     try {
-      // 🔥 Ambil token dari COOKIE, bukan lagi dari header!!
-      const token = req.cookies?.cookies_access_token;
 
-      if (!token) {
+      const encryptedToken = req.cookies?.cookies_access_token;
+
+      if (!encryptedToken) {
         return next(
           new ApiError(
             httpStatus.StatusCodes.UNAUTHORIZED,
@@ -21,6 +22,15 @@ export default function auth(roles) {
         );
       }
 
+      // 🔓 DECRYPT TOKEN DULU
+      let token;
+      try {
+        token = decrypt(encryptedToken);
+      } catch (err) {
+        return next(new Unauthenticated("Invalid encrypted token"));
+      }
+
+      // 🔍 VERIFY JWT
       let decoded;
       try {
         decoded = verifyToken(token);
@@ -28,12 +38,10 @@ export default function auth(roles) {
         return next(new Unauthenticated("Invalid or expired token"));
       }
 
-      // 🔍 Cari user berdasarkan decoded token
+      // 🔎 Cari user
       const user = await prisma.users.findFirst({
         where: { id: decoded.userId },
-        include: {
-          role_users: true,
-        },
+        include: { role_users: true },
       });
 
       if (!user) {
@@ -46,10 +54,9 @@ export default function auth(roles) {
         );
       }
 
-      // 🔐 Cek role jika diperlukan
+      // 🔐 Cek role jika perlu
       if (roles && roles.length > 0) {
         const userRoleCodes = user.role_users.map(r => r.roles.code);
-
         const hasAccess = roles.some(allowedRole =>
           userRoleCodes.includes(allowedRole)
         );
@@ -65,9 +72,7 @@ export default function auth(roles) {
         }
       }
 
-      // 🔥 Simpan user ke req
       req.user = user;
-
       next();
 
     } catch (e) {

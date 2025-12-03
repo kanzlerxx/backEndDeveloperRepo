@@ -4,6 +4,11 @@ import { createClient } from "@supabase/supabase-js";
 import { error } from "console";
 import { Forbidden, NotFound, BadRequest } from '../../exceptions/catch.execption.js';
 
+const checkIsLiked = (thread, userId) => {
+  if (!userId) return false;  
+  return thread.like_threads?.some(like => like.user_id === userId) || false;
+};
+
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -14,6 +19,8 @@ class threadsService extends BaseService {
   constructor() {
     super(prisma);
   }
+
+  
 
   async uploadImage(thumbnail, thread_id) {
     if (!thumbnail) return null;
@@ -161,16 +168,20 @@ async updateThreadImages(thread_id, existingUrls = [], newThreadsImages = []) {
 
   // const countData = await this.db.threads.count({ where: q.where });
   // return this.paginate(data, countData, q);
-findAll = async (query) => {
+findAll = async (query, userId) => {
   const q = this.transformBrowseQuery(query);
 
   delete q.take;
   delete q.skip;
 
-  return await this.db.threads.findMany({
+  const data = await this.db.threads.findMany({
     ...q,
     include: {
       threads_images: true,
+
+      // tetap perlu agar bisa hitung is_liked jika user login
+      like_threads: true,
+
       _count: {
         select: {
           like_threads: true,
@@ -178,27 +189,34 @@ findAll = async (query) => {
         },
       },
     },
-  }).then(data =>
-    data.map(item => {
-      const { _count, ...rest } = item;
-      return {
-        ...rest,
-        total_likes_threads: _count.like_threads,
-        total_comments_threads: _count.comments,
-      };
-    })
-  );
+  });
+
+  return data.map(item => {
+    const { _count, like_threads, ...rest } = item;
+
+    return {
+      ...rest,
+      total_likes_threads: _count.like_threads,
+      total_comments_threads: _count.comments,
+
+      // guest → false | logged in → sesuai cek
+      is_liked: checkIsLiked(item, userId),
+    };
+  });
 };
 
 
 
- findAllRandom = async (query) => {
+
+
+ findAllRandom = async (query, userId) => {
   const page = parseInt(query.page) || 1;
   const limit = 5;
 
   let data = await this.db.threads.findMany({
     include: {
       threads_images: true,
+      like_threads: true, // <── tambahkan
       _count: {
         select: {
           like_threads: true,
@@ -208,20 +226,20 @@ findAll = async (query) => {
     },
   });
 
-  // mapping + hapus _count
+  // mapping + hapus _count + hitung is_liked
   data = data.map(item => {
-    const { _count, ...rest } = item;
+    const { _count, like_threads, ...rest } = item;
     return {
       ...rest,
       total_likes_threads: _count.like_threads,
       total_comments_threads: _count.comments,
+      is_liked: checkIsLiked(item, userId), // <── tambahkan
     };
   });
 
   // Shuffle
   data = data.sort(() => Math.random() - 0.5);
 
-  // Paginate
   const start = (page - 1) * limit;
   const paginated = data.slice(start, start + limit);
 
@@ -234,13 +252,15 @@ findAll = async (query) => {
 };
 
 
- findByUserId = async (user_id, query) => {
+
+ findByUserId = async (user_id, query, loggedInUserId) => {
   const page = parseInt(query.page) || 1;
 
   const data = await this.db.threads.findMany({
     where: { user_id: Number(user_id) },
     include: {
       threads_images: true,
+      like_threads: true, // <── tambahkan
       _count: {
         select: {
           like_threads: true,
@@ -251,11 +271,12 @@ findAll = async (query) => {
   });
 
   const finalData = data.map(item => {
-    const { _count, ...rest } = item;
+    const { _count, like_threads, ...rest } = item;
     return {
       ...rest,
       total_likes_threads: _count.like_threads,
       total_comments_threads: _count.comments,
+      is_liked: checkIsLiked(item, loggedInUserId), // <── tambahkan
     };
   });
 
@@ -272,17 +293,20 @@ findAll = async (query) => {
 };
 
 
-  findById = async (id) => {
+
+  findById = async (id, userId) => {
   const data = await this.db.threads.findUnique({
     where: { id: Number(id) },
     include: {
       threads_images: true,
-
       like_threads: true,
-
       comments: {
-        include: {
-          users: true,     // biasanya relasinya sama: users
+        include: { users: true },
+      },
+      _count: {
+        select: {
+          like_threads: true,
+          comments: true,
         },
       },
     },
@@ -290,10 +314,19 @@ findAll = async (query) => {
 
   if (!data) return null;
 
-  delete data._count;
+  // SAMAKAN DENGAN findAll:
+  const { _count, comments, like_threads, ...rest } = data;
 
-  return data;
+  return {
+    ...rest,
+    total_likes_threads: _count.like_threads,
+    total_comments_threads: _count.comments,
+    is_liked: checkIsLiked(data, userId),
+
+  };
 };
+
+
 
 
 

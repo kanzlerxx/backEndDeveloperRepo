@@ -1,6 +1,8 @@
-  import BaseController from '../../base/controller.base.js';
+import BaseController from '../../base/controller.base.js';
   import { NotFound } from '../../exceptions/catch.execption.js';
   import AuthenticationService from './authentication.service.js';
+import { encrypt, decrypt } from "../../helpers/encryption.helper.js";
+
 
   class AuthenticationController extends BaseController {
     #service;
@@ -13,54 +15,77 @@
     login = this.wrapper(async (req, res) => {
   const data = await this.#service.login(req.body);
 
-  const { access_token, refresh_token } = data.token;
+  // encrypt token
+  const accessEnc = encrypt(data.token.access_token);
+  const refreshEnc = encrypt(data.token.refresh_token);
 
-  // SET COOKIE KE NAMA BARU
-  res.cookie("cookies_access_token", access_token, {
+  // set cookies
+  res.cookie("cookies_access_token", accessEnc, {
     httpOnly: true,
     secure: true,
     sameSite: "strict",
-    maxAge: 1000 * 60 * 15 // 15 menit
+    maxAge: 1000 * 60 * 15,
   });
 
-  res.cookie("cookies_refresh_token", refresh_token, {
+  res.cookie("cookies_refresh_token", refreshEnc, {
     httpOnly: true,
     secure: true,
     sameSite: "strict",
-    maxAge: 1000 * 60 * 60 * 24 * 7 // 7 hari
+    maxAge: 1000 * 60 * 60 * 24 * 7,
   });
 
-  return res.status(200).json({
-    message: "Selamat Kamu Telah Berhasil Login",
-    user: data.user
-  });
+  // 👇 TAMBAHAN UNTUK DEBUG
+  return this.ok(
+    res,
+    {
+      user: data.user,
+      access_token: data.token.access_token,       // token asli (sementara)
+      cookies_access_token: accessEnc,            // versi terenkripsi
+    },
+    "Login success"
+  );
 });
 
 
-    refresh = this.wrapper(async (req, res) => {
-  const refreshToken = req.cookies.cookies_refresh_token;
 
-  const data = await this.#service.refreshToken(refreshToken);
+     refresh = this.wrapper(async (req, res) => {
+    const encryptedRefresh = req.cookies.cookies_refresh_token;
 
-  res.cookie("cookies_access_token", data.token.access_token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "strict",
-    maxAge: 1000 * 60 * 15
+    if (!encryptedRefresh) {
+      return res.status(401).json({ message: "No refresh token provided" });
+    }
+
+    // 🔓 decrypt cookie refresh token
+    const refreshToken = decrypt(encryptedRefresh);
+
+    // 🔄 minta token baru
+    const data = await this.#service.refreshToken(refreshToken);
+
+    // 🔐 encrypt token baru
+    const newAccessEnc = encrypt(data.token.access_token);
+    const newRefreshEnc = encrypt(data.token.refresh_token);
+
+    // 🥠 set ulang cookie
+    res.cookie("cookies_access_token", newAccessEnc, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      maxAge: 1000 * 60 * 15,
+    });
+
+    res.cookie("cookies_refresh_token", newRefreshEnc, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+    });
+
+    return res.json({
+      message: "Token refreshed",
+      user: data.user,
+    });
   });
 
-  res.cookie("cookies_refresh_token", data.token.refresh_token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "strict",
-    maxAge: 1000 * 60 * 60 * 24 * 7
-  });
-
-  return res.json({
-    message: "Token refreshed",
-    user: data.user
-  });
-});
 
 
     register = this.wrapper(async (req, res) => {
@@ -79,11 +104,6 @@
 
   return res.json({ message: "Logged out" });
 });
-
-
-
-
-
   }
 
   export default AuthenticationController;
