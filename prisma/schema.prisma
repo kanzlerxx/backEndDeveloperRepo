@@ -100,7 +100,7 @@ model threads {
   user_id             Int
   threads_title       String             @db.VarChar(255)
   threads_thumbnail   String?            @db.VarChar(255)
-  threads_description String?            @db.VarChar(1500)
+  threads_description String?
   threads_concern     String?            @db.VarChar(100)
   forum_id            Int?
   bookmark_list       bookmark_list[]
