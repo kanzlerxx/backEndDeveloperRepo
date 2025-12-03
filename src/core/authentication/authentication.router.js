@@ -35,5 +35,11 @@
     controller.update
   );
 
+  r.post(
+    '/logout',
+    auth(),
+    controller.logout
+  );
+
   const authenticationRouter = r;
   export default authenticationRouter;

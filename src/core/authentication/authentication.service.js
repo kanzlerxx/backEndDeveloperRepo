@@ -46,7 +46,7 @@
     return {
       user: this.exclude(user, ["password"]),
       token: { access_token, refresh_token },
-    };
+    };  
   };
 
 

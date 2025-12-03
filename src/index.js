@@ -11,10 +11,10 @@ import http from 'http';
 import { Server } from 'socket.io';
 import router from './routes.js';
 import handleError from './exceptions/handler.exception.js';
-
-
+import cookieParser from "cookie-parser";
 
 const app = express();
+app.use(cookieParser());
 
 
 app.disable('x-powered-by');
