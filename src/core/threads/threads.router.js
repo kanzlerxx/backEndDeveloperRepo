@@ -4,6 +4,7 @@
   import threadsValidator from "./threads.validator.js";
   import { baseValidator } from "../../base/validator.base.js";
   import auth from "../../middlewares/auth.middleware.js";
+  import authOptional from "../../middlewares/authOpsional.middleware.js";
 import multer from "multer";
   
   const upload = multer();
@@ -14,12 +15,14 @@ import multer from "multer";
 
   r.get(
     "/show-all",
+    authOptional,
     validatorMiddleware({ query: baseValidator.browseQuery }),
     controller.findAll
   );
 
   r.get(
     "/show-random",
+    authOptional,
     validatorMiddleware({ query: baseValidator.browseQuery }),
     controller.findAllRandom
   );
@@ -27,11 +30,14 @@ import multer from "multer";
 // Threads by user
   r.get(
     "/show-by-user/:user_id",
+    authOptional,
     validatorMiddleware({ query: baseValidator.browseQuery }),
     controller.findByUserId
   );
 
-  r.get("/show-one/:id", controller.findById);
+  r.get("/show-one/:id",
+    authOptional, 
+    controller.findById);
 
   r.post(
     "/create",

@@ -11,7 +11,8 @@
     }
 
     findAll = this.wrapper(async (req, res) => {
-      const data = await this.#service.findAll(req.query);
+      const userId = req.user?.id || null;
+      const data = await this.#service.findAll(req.query, userId);
       return this.ok(res, data, "threadss successfully retrieved");
     });
 
