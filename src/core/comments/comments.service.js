@@ -13,16 +13,32 @@ class commentsService extends BaseService {
     super(prisma);
   }
 
-  findAll = async (query) => {
-    const q = this.transformBrowseQuery(query);
-    const data = await this.db.comments.findMany({ ...q });
+findAll = async (query) => {
+  const q = this.transformBrowseQuery(query);
 
-    if (query.paginate) {
-      const countData = await this.db.comments.count({ where: q.where });
-      return this.paginate(data, countData, q);
+  const data = await this.db.comments.findMany({
+    ...q,
+    include: {
+      _count: {
+        select: { like_comments: true }
+      }
     }
-    return data;
-  };
+  });
+
+  // Tambahkan total_like sebagai field baru
+  const formatted = data.map((c) => ({
+    ...c,
+    total_like: c._count.like_comments
+  }));
+
+  if (query.paginate) {
+    const countData = await this.db.comments.count({ where: q.where });
+    return this.paginate(formatted, countData, q);
+  }
+
+  return formatted;
+};
+
 
   findById = async (id) => {
     const data = await this.db.comments.findUnique({ where: { id } });
