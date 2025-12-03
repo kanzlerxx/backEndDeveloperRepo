@@ -45,7 +45,7 @@ import multer from "multer";
  
 
   r.post(
-    "/liket",
+    "/like",
     auth(),
     controller.likeThread
   );
