@@ -20,11 +20,11 @@ app.use(cookieParser());
 app.disable('x-powered-by');
 app.use(
   cors({
-    origin: '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTION',
+    origin: "http://localhost:5173",
     credentials: true,
   })
 );
+
 
 const port = process.env.PORT || 3000;
 app.use(
@@ -103,10 +103,12 @@ app.use(handleError);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*',
-    methods: ['GET', 'POST'],
+    origin: "http://localhost:5173",
+    credentials: true,
+    methods: ["GET", "POST"],
   },
 });
+
 
 io.on('connection', (socket) => {
   socket.on('disconnect', () => {
