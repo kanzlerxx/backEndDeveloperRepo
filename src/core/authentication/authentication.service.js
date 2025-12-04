@@ -16,6 +16,11 @@
       super(prisma);
     }
 
+  getUserById = async (id) => {
+  const user = await this.db.users.findUnique({ where: { id } });
+  return this.exclude(user, ["password"]);
+};
+
     
   login = async (payload) => {
     const { identifier, password } = payload;

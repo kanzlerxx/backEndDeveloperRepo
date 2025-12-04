@@ -9,7 +9,6 @@ export default function auth(roles) {
 
   return async (req, res, next) => {
     try {
-
       const encryptedToken = req.cookies?.cookies_access_token;
 
       if (!encryptedToken) {
@@ -17,12 +16,12 @@ export default function auth(roles) {
           new ApiError(
             httpStatus.StatusCodes.UNAUTHORIZED,
             'NO_AUTHORIZATION',
-            'Please Authenticate'
+            'blom login'
           )
         );
       }
 
-      // 🔓 DECRYPT TOKEN DULU
+      // ⬇️ Decrypt cookie → JWT string
       let token;
       try {
         token = decrypt(encryptedToken);
@@ -30,17 +29,27 @@ export default function auth(roles) {
         return next(new Unauthenticated("Invalid encrypted token"));
       }
 
-      // 🔍 VERIFY JWT
+      // ⬇️ Verify JWT
       let decoded;
       try {
-        decoded = verifyToken(token);
-      } catch (e) {
+        decoded = verifyToken(token); // HARUS pakai public key
+      } catch (err) {
         return next(new Unauthenticated("Invalid or expired token"));
       }
 
-      // 🔎 Cari user
+      // ⬇️ Ambil ID dari token
+      const userId = decoded?.userId;
+
+      if (!userId) {
+        return next(new Unauthenticated("Teu login"));
+      }
+
+
+      req.userId = userId;
+
+      // ⬇️ Fetch user
       const user = await prisma.users.findFirst({
-        where: { id: decoded.userId },
+        where: { id: userId },
         include: { role_users: true },
       });
 
@@ -54,12 +63,10 @@ export default function auth(roles) {
         );
       }
 
-      // 🔐 Cek role jika perlu
+      // ⬇️ Role check
       if (roles && roles.length > 0) {
         const userRoleCodes = user.role_users.map(r => r.roles.code);
-        const hasAccess = roles.some(allowedRole =>
-          userRoleCodes.includes(allowedRole)
-        );
+        const hasAccess = roles.some(r => userRoleCodes.includes(r));
 
         if (!hasAccess) {
           return next(
@@ -76,6 +83,7 @@ export default function auth(roles) {
       next();
 
     } catch (e) {
+
       if (e.message === 'jwt expired') {
         return next(
           new ApiError(
