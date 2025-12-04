@@ -22,15 +22,15 @@ import { encrypt, decrypt } from "../../helpers/encryption.helper.js";
   // set cookies
   res.cookie("cookies_access_token", accessEnc, {
     httpOnly: true,
-    secure: true,
-    sameSite: "none",
+    secure: false,
+    sameSite: "lax",
     maxAge: 1000 * 60 * 15,
   });
 
   res.cookie("cookies_refresh_token", refreshEnc, {
     httpOnly: true,
-    secure: true,
-    sameSite: "none",
+    secure: false,
+    sameSite: "lax",
     maxAge: 1000 * 60 * 60 * 24 * 7,
   });
 
