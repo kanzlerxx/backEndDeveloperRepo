@@ -12,7 +12,19 @@ import { encrypt, decrypt } from "../../helpers/encryption.helper.js";
       this.#service = new AuthenticationService();
     }
 
-    login = this.wrapper(async (req, res) => {
+  me = this.wrapper(async (req, res) => {
+  const user = await this.#service.getUserById(req.user.id);
+
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  return this.ok(res, { user });
+});
+
+
+  login = this.wrapper(async (req, res) => {
   const data = await this.#service.login(req.body);
 
   // encrypt token
@@ -39,8 +51,6 @@ import { encrypt, decrypt } from "../../helpers/encryption.helper.js";
     res,
     {
       user: data.user,
-      access_token: data.token.access_token,       // token asli (sementara)
-      cookies_access_token: accessEnc,            // versi terenkripsi
     },
     "Login success"
   );
