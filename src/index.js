@@ -28,11 +28,14 @@ app.use(
 
 const port = process.env.PORT || 3000;
 app.use(
-  bodyParser.json({
-    limit: '50mb',
-    type: ['application/json', 'application/vnd.api+json'],
+  cors({
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   })
-);  
+);
+
 app.use(
   bodyParser.urlencoded({
     limit: '50mb',
