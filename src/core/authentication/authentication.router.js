@@ -23,7 +23,6 @@
 
   r.post(
     '/refresh',
-    validatorMiddleware({ body: validator.refresh }),
     controller.refresh
   );
 

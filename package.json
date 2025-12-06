@@ -31,6 +31,7 @@
     "baileys": "^6.7.17",
     "base64url": "^3.0.1",
     "bcrypt": "^5.1.1",
+    "bcryptjs": "^3.0.3",
     "body-parser": "^1.20.3",
     "commander": "^13.1.0",
     "cookie-parser": "^1.4.7",

@@ -21,52 +21,82 @@
   return this.exclude(user, ["password"]);
 };
 
-    
-  login = async (payload) => {
-    const { identifier, password } = payload;
-
-    if (!identifier) throw new BadRequest("Email or username is required");
-    if (!password) throw new BadRequest("Password is required");
-
-    // Deteksi apakah identifier adalah email
-    const isEmail = identifier.includes("@");
-
-    // Cari user berdasarkan email ATAU username
-    const user = await this.db.users.findUnique({
-      where: isEmail
-        ? { email: identifier }
-        : { username: identifier },
+  revokeRefreshToken = async (userId) => {
+    await this.db.users.update({
+      where: { id: userId },
+      data: { refresh_token: null },
     });
-
-    if (!user) throw new NotFound("Account not found");
-
-    // Cek password
-    const pwValid = await compare(password, user.password);
-    if (!pwValid) throw new BadRequest("Password is incorrect");
-
-    // Token
-    const access_token = await generateAccessToken(user);
-    const refresh_token = await generateRefreshToken(user);
-
-    return {
-      user: this.exclude(user, ["password"]),
-      token: { access_token, refresh_token },
-    };  
   };
 
+    
+  login = async (payload) => {
+  const { identifier, password } = payload;
 
-    refreshToken = async (refresh) => {
-      const payload = jwt.decode(refresh);
+  const isEmail = identifier.includes("@");
+  const user = await this.db.users.findUnique({
+    where: isEmail ? { email: identifier } : { username: identifier },
+  });
 
-      const user = await this.db.users.findUnique({
-        where: { email: payload.email },
-      });
-      if (!user) throw new NotFound('Account not found');
+  if (!user) throw new NotFound("Account not found");
 
-      const access_token = await generateAccessToken(user);
-      const refresh_token = await generateRefreshToken(user)
-      return { user: this.exclude(user, ['password', 'isVerified']), token: {access_token, refresh_token} };
-    };
+  const pwValid = await compare(password, user.password);
+  if (!pwValid) throw new BadRequest("Password is incorrect");
+
+  // Generate token
+  const access_token = await generateAccessToken(user);
+  const refresh_token = await generateRefreshToken(user);
+
+  // 🔥 Simpan refresh token ke DB
+  await this.db.users.update({
+    where: { id: user.id },
+    data: { refresh_token },
+  });
+
+  return {
+    user: this.exclude(user, ["password"]),
+    token: { access_token, refresh_token },
+  };
+};
+
+
+
+    refreshToken = async (incomingRefreshToken) => {
+
+  if (!incomingRefreshToken) {
+    throw new BadRequest("Refresh token missing");
+  }
+
+  // Decode untuk ambil email / id (jangan verify dulu)
+  const payload = jwt.decode(incomingRefreshToken);
+  if (!payload) throw new Forbidden("Invalid refresh token");
+
+  const user = await this.db.users.findUnique({
+    where: { email: payload.email },
+  });
+
+  if (!user) throw new NotFound("Account not found");
+
+  // 🔥 Validasi refresh token terhadap database
+  if (user.refresh_token !== incomingRefreshToken) {
+    throw new Forbidden("Refresh token has been rotated or is invalid");
+  }
+
+  // Jika cocok → generate token baru
+  const access_token = await generateAccessToken(user);
+  const new_refresh_token = await generateRefreshToken(user);
+
+  // 🔥 Update refresh token di DB (rotate)
+  await this.db.users.update({
+    where: { id: user.id },
+    data: { refresh_token: new_refresh_token },
+  });
+
+  return {
+    user: this.exclude(user, ["password"]),
+    token: { access_token, refresh_token: new_refresh_token },
+  };
+};
+
 
 register = async (payload) => {
   const { username, email, password, bio } = payload || {};
