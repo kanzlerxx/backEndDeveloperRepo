@@ -36,7 +36,7 @@ import { encrypt, decrypt } from "../../helpers/encryption.helper.js";
     httpOnly: true,
     secure: true,
     sameSite: "none",
-    maxAge: 1000 * 15,
+    maxAge: 1000 * 60 * 15,
   });
 
   res.cookie("cookies_refresh_token", refreshEnc, {
