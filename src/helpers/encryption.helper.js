@@ -3,7 +3,15 @@ import crypto from "crypto";
 const ALGO = "aes-256-gcm";
 const SECRET = Buffer.from(process.env.COOKIE_SECRET, "utf8");
 
+if (!SECRET || SECRET.length !== 32) {
+  throw new Error("COOKIE_SECRET must be exactly 32 characters.");
+}
+
 export function encrypt(text) {
+  if (typeof text !== "string") {
+    text = JSON.stringify(text); // jaga-jaga kalau bukan string
+  }
+
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv(ALGO, SECRET, iv);
 
@@ -12,6 +20,7 @@ export function encrypt(text) {
 
   const tag = cipher.getAuthTag().toString("base64");
 
+  // iv:tag:cipher
   return `${iv.toString("base64")}:${tag}:${encrypted}`;
 }
 
