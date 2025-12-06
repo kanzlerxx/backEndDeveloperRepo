@@ -35,14 +35,14 @@ import { encrypt, decrypt } from "../../helpers/encryption.helper.js";
   res.cookie("cookies_access_token", accessEnc, {
     httpOnly: true,
     secure: true,
-    sameSite: "strict",
-    maxAge: 1000 * 60 * 15,
+    sameSite: "none",
+    maxAge: 1000 * 15,
   });
 
   res.cookie("cookies_refresh_token", refreshEnc, {
     httpOnly: true,
     secure: true,
-    sameSite: "strict",
+    sameSite: "none",
     maxAge: 1000 * 60 * 60 * 24 * 7,
   });
 
@@ -50,7 +50,14 @@ import { encrypt, decrypt } from "../../helpers/encryption.helper.js";
     delete data.user.refresh_token;
   }
 
-  return this.ok(res, { user: data.user }, "Login success");
+  return res.json({
+  message: "Login success",
+  token: {
+    access_token: data.token.access_token
+  },
+  user: data.user
+});
+
 });
 
 refresh = this.wrapper(async (req, res) => {
@@ -72,7 +79,7 @@ refresh = this.wrapper(async (req, res) => {
     httpOnly: true,
     secure: true,
     sameSite: "none",
-    maxAge: 1000 * 60 * 15,
+    maxAge: 15 * 1000,  
   });
 
   res.cookie("cookies_refresh_token", newRefreshEnc, {
@@ -83,13 +90,17 @@ refresh = this.wrapper(async (req, res) => {
   });
 
   if (data.user.refresh_token) {
-    delete data.user.refresh_token;
+    delete data.user.refresh_token; 
   }
-  
-  return res.json({
-    message: "Token refreshed",
-    user: data.user,
-  });
+
+ return res.json({
+  message: "Token refreshed",
+  token: {
+    access_token: data.token.access_token
+  },
+  user: data.user
+});
+
 });
 
 
