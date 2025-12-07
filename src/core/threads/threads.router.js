@@ -15,7 +15,7 @@ import multer from "multer";
 
   r.get(
     "/show-all",
-    auth(),
+    authOptional,
     validatorMiddleware({ query: baseValidator.browseQuery }),
     controller.findAll
   );
