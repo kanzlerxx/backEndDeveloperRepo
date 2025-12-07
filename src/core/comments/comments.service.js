@@ -39,11 +39,24 @@ findAll = async (query) => {
   return formatted;
 };
 
+findById = async (id) => {
+  const data = await this.db.comments.findUnique({
+    where: { id },
+    include: {
+      _count: {
+        select: { like_comments: true }
+      }
+    }
+  });
 
-  findById = async (id) => {
-    const data = await this.db.comments.findUnique({ where: { id } });
-    return data;
+  if (!data) return null;
+
+  return {
+    ...data,
+    total_like: data._count.like_comments
   };
+};
+
 
   createComment = async (payload, file, user_id) => {
   const { comment_desc, threads_id, bind_to_comment } = payload;
@@ -52,7 +65,6 @@ findAll = async (query) => {
   if (!comment_desc) throw new BadRequest("comment_desc is required");
   if (!threads_id) throw new BadRequest("threads_id is required");
 
-  // 1. Buat comment tanpa file dulu
   const comment = await this.db.comments.create({
     data: {
       user_id,
@@ -62,10 +74,15 @@ findAll = async (query) => {
     },
   });
 
-  // 2. Kalau tidak ada file, return langsung
-  if (!file) return comment;
+  // Jika tidak upload file → tetap return format yang sama
+  if (!file) {
+    return {
+      ...comment,
+      total_like: 0
+    };
+  }
 
-  // 3. Upload file ke Supabase
+  // Upload file
   const uploadPath = `comments/${comment.id}-${Date.now()}`;
 
   const { data, error } = await supabase.storage
@@ -80,14 +97,17 @@ findAll = async (query) => {
     .from("image")
     .getPublicUrl(uploadPath).data.publicUrl;
 
-  // 4. Update comment dengan URL file
   const updatedComment = await this.db.comments.update({
     where: { id: comment.id },
     data: { uploaded_file: publicUrl },
   });
 
-  return updatedComment;
+  return {
+    ...updatedComment,
+    total_like: 0
+  };
 };
+
 
 likeComment = async ({ comment_id, user_id }) => {
   // 1. Pastikan comment ada

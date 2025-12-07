@@ -10,7 +10,7 @@ export async function seedUsers() {
     where: { email: "kontol@example.com" },
     update: {},
     create: {
-      username: "Admin1",
+      username: "elganteng",
       email: "kontol@example.com",
       password: password,
       profile_image: "https://example.com/profiles/admin1.jpg",

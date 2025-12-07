@@ -63,6 +63,8 @@
 });
 
 
+
+
     register = this.wrapper(async (req, res) => {
       const data = await this.#service.register(req.body);
       return this.ok(res, data, 'Registration successful');
@@ -79,11 +81,20 @@
 
   return res.json({ message: "Logged out" });
 });
+  forgetPassword = this.wrapper(async (req, res) => {
+    const data = await this.#service.forgetPassword(req.body);
+    return this.ok(res, 'Jika email benar dan terdaftar, link telah dikirim');
+  });
+
+  resetPassword = this.wrapper(async (req, res) => {
+    const data = await this.#service.resetPassword(req.body.token, req.body.newPassword);
+    return this.ok(res, 'Password berhasil direset. Silakan Login kembali dengan password baru Anda.');
+  })
 
 
 
 
 
-  }
+}
 
   export default AuthenticationController;
