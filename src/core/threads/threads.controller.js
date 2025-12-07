@@ -71,6 +71,10 @@ unlikeThread = this.wrapper(async (req, res) => {
   return this.ok(res, data, "thread unliked successfully");
 });
 
+showAll = this.wrapper(async (req, res) => {
+  const data = await this.#service.showAllLikeThreads(req.query);
+  return this.ok(res, data, "All liked threads retrieved");
+});
 
 
     create = this.wrapper(async (req, res) => {

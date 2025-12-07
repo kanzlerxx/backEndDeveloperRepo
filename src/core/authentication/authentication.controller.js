@@ -104,10 +104,6 @@ refresh = this.wrapper(async (req, res) => {
 });
 
 
-
-
-
-
     register = this.wrapper(async (req, res) => {
       const data = await this.#service.register(req.body);
       return this.ok(res, data, 'Registration successful');
