@@ -6,6 +6,7 @@
   import prisma from '../../config/prisma.db.js';
   import { createClient } from '@supabase/supabase-js';
 
+      const JWT_SECRET = process.env.JWT_SECRET || "secret_reset_password";
     const supabase = createClient(
       process.env.SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE // atau ANON_KEY tergantung kebutuhan
@@ -15,6 +16,63 @@
     constructor() {
       super(prisma);
     }
+forgetPassword = async (email) => {
+  const user = await this.db.users.findUnique({
+    where:  { email: String(email) }
+  });     
+
+  if (!user) throw new NotFound("Akun tidak ditemukan");
+
+  const token = jwt.sign(
+    { userId: user.id, email: user.email },
+    process.env.JWT_SECRET,
+    { expiresIn: "24h" }
+  );
+
+  const resetLink = `
+  <!DOCTYPE html>
+  <html>
+  <body>
+    <h2>Halo ${user.username || "Pengguna"}</h2>
+    <p>Klik link di bawah untuk reset password:</p>
+    <a href="http://localhost:5173/reset-password?token=${token}">
+      Reset Password
+    </a>
+    <p>Link berlaku 24 jam.</p>
+  </body>
+  </html>
+  `;
+
+  await sendEmail(user.email, "Reset Password", resetLink);
+
+  return { message: "Reset password sent" };
+};
+
+resetPassword = async (token, newPassword) => {
+  if (!newPassword) throw new BadRequest("Password baru wajib diisi");
+
+  let decoded;
+  try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (err) {
+    throw new BadRequest("Token tidak valid atau sudah kedaluwarsa");
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  const user = await this.db.users.findUnique({
+    where: { email: decoded.email }
+  });
+
+  if (!user) throw new NotFound("Akun tidak ditemukan");
+
+  await this.db.users.update({
+    where: { id: decoded.userId },
+    data: { password: hashedPassword }
+  });
+
+  return { message: "Password berhasil direset" };
+};
 
   getUserById = async (id) => {
   const user = await this.db.users.findUnique({ where: { id } });

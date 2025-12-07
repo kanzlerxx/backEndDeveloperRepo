@@ -6,7 +6,7 @@ export async function seedLikes(user, threads) {
     await prisma.like_threads.create({
       data: {
         user_id: 1,
-        threads_id: 1,
+        threads_id: 20,
       }
     });
   }

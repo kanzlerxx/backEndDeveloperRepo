@@ -205,6 +205,38 @@ findAll = async (query, userId) => {
   });
 };
 
+showAllLikeThreads = async (query) => {
+  const q = this.transformBrowseQuery(query);
+
+  const data = await this.db.like_threads.findMany({
+    ...q,
+    include: {
+      users: {
+        select: {
+          id: true,
+          username: true,
+          email: true,
+        }
+      },
+      threads: {
+        select: {
+          id: true,
+          threads_title: true,
+          threads_thumbnail: true
+        }
+      }
+    }
+  });
+
+  if (query.paginate) {
+    const countData = await this.db.like_threads.count({ where: q.where });
+    return this.paginate(data, countData, q);
+  }
+
+  return data;
+};
+
+
 
 
 
