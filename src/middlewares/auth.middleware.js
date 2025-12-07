@@ -3,37 +3,54 @@ import { ApiError } from '../exceptions/errors.exception.js';
 import { verifyToken } from '../helpers/jwt.helper.js';
 import { Unauthenticated } from '../exceptions/catch.execption.js';
 import prisma from '../config/prisma.db.js';
+import { decrypt } from "../helpers/encryption.helper.js";
 
 export default function auth(roles) {
 
   return async (req, res, next) => {
     try {
-      // 🔥 Ambil token dari COOKIE, bukan lagi dari header!!
-      const token = req.cookies?.cookies_access_token;
+      const encryptedToken = req.cookies?.cookies_access_token;
 
-      if (!token) {
+      if (!encryptedToken) {
         return next(
           new ApiError(
             httpStatus.StatusCodes.UNAUTHORIZED,
             'NO_AUTHORIZATION',
-            'Please Authenticate'
+            'blom login'
           )
         );
       }
 
+      // ⬇️ Decrypt cookie → JWT string
+      let token;
+      try {
+        token = decrypt(encryptedToken);
+      } catch (err) {
+        return next(new Unauthenticated("Invalid encrypted token"));
+      }
+
+      // ⬇️ Verify JWT
       let decoded;
       try {
-        decoded = verifyToken(token);
-      } catch (e) {
+        decoded = verifyToken(token); // HARUS pakai public key
+      } catch (err) {
         return next(new Unauthenticated("Invalid or expired token"));
       }
 
-      // 🔍 Cari user berdasarkan decoded token
+      // ⬇️ Ambil ID dari token
+      const userId = decoded?.userId;
+
+      if (!userId) {
+        return next(new Unauthenticated("Teu login"));
+      }
+
+
+      req.userId = userId;
+
+      // ⬇️ Fetch user
       const user = await prisma.users.findFirst({
-        where: { id: decoded.userId },
-        include: {
-          role_users: true,
-        },
+        where: { id: userId },
+        include: { role_users: true },
       });
 
       if (!user) {
@@ -46,13 +63,10 @@ export default function auth(roles) {
         );
       }
 
-      // 🔐 Cek role jika diperlukan
+      // ⬇️ Role check
       if (roles && roles.length > 0) {
         const userRoleCodes = user.role_users.map(r => r.roles.code);
-
-        const hasAccess = roles.some(allowedRole =>
-          userRoleCodes.includes(allowedRole)
-        );
+        const hasAccess = roles.some(r => userRoleCodes.includes(r));
 
         if (!hasAccess) {
           return next(
@@ -65,12 +79,11 @@ export default function auth(roles) {
         }
       }
 
-      // 🔥 Simpan user ke req
       req.user = user;
-
       next();
 
     } catch (e) {
+
       if (e.message === 'jwt expired') {
         return next(
           new ApiError(

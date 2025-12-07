@@ -83,9 +83,7 @@ class forumService extends BaseService {
   };
 
   create = async (payload, profileFile, bannerFile) => {
-  if (!forum_title) throw new BadRequest("Forum Title is required");
-  if (!forum_description) throw new BadRequest("Description is required");
-  if (!id_categories) throw new BadRequest("Categories is required");
+ 
     // Step 1: Create forum without images
     payload.id_categories = Number(payload.id_categories);
     const forum = await this.db.forum.create({

@@ -15,24 +15,30 @@ import cookieParser from "cookie-parser";
 
 const app = express();
 app.use(cookieParser());
+app.use(express.json()); // WAJIB
+app.use(express.urlencoded({ extended: true }));
+
 
 
 app.disable('x-powered-by');
 app.use(
   cors({
-    origin: '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTION',
+    origin: "http://localhost:5173",
     credentials: true,
   })
 );
 
+
 const port = process.env.PORT || 3000;
 app.use(
-  bodyParser.json({
-    limit: '50mb',
-    type: ['application/json', 'application/vnd.api+json'],
+  cors({
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   })
-);  
+);
+
 app.use(
   bodyParser.urlencoded({
     limit: '50mb',
@@ -103,10 +109,12 @@ app.use(handleError);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*',
-    methods: ['GET', 'POST'],
+    origin: "http://localhost:5173",
+    credentials: true,
+    methods: ["GET", "POST"],
   },
 });
+
 
 io.on('connection', (socket) => {
   socket.on('disconnect', () => {

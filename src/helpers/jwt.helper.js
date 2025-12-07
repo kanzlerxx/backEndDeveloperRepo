@@ -10,6 +10,8 @@ const __dirname = path.dirname(__filename);
 // Path absolut ke file private.pem
 const privateKeyPath = path.resolve(__dirname, '../../secrets/private.pem');
 const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
+const publicKeyPath = path.resolve(__dirname, '../../secrets/public.pem');
+const publicKey = fs.readFileSync(publicKeyPath, 'utf8');
 
 export const generateAccessToken = async (user) => {
   const payload = {
@@ -58,5 +60,5 @@ export const generateResetPasswordToken = (userId) => {
 };
 
 export const verifyToken = (token) => {
-  return jwt.verify(token, privateKey, { algorithms: ['RS256'] });
+  return jwt.verify(token, publicKey, { algorithms: ['RS256'] });
 };

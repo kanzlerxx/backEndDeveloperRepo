@@ -8,6 +8,13 @@
     validator = AuthenticationValidator,
     controller = new AuthenticationController();
 
+  r.get(
+    '/me', 
+    auth(), 
+    controller.me
+  );
+
+
   r.post(
     '/login',
     validatorMiddleware({ body: validator.login }),
@@ -28,7 +35,6 @@ r.post(
 
   r.post(
     '/refresh',
-    validatorMiddleware({ body: validator.refresh }),
     controller.refresh
   );
 
