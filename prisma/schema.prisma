@@ -24,7 +24,6 @@ model bookmark_list {
   threads                                                              threads          @relation(fields: [threads_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@id([bookmark_content_id, threads_id])
-  @@ignore
 }
 
 model categories {
