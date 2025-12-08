@@ -260,7 +260,7 @@ unfollowForum = async ({ forum_id, user_id }) => {
   delete = async (id) => {
     const forum = await this.db.forum.findUnique({
       where: { id: Number(id) },
-    });
+    });   
 
     if (!forum) throw new NotFound("Forum not found");
 
@@ -276,6 +276,7 @@ unfollowForum = async ({ forum_id, user_id }) => {
     await this.db.forum.delete({
       where: { id: Number(id) },
     });
+   
 
     return { message: "Forum deleted" };
   };
