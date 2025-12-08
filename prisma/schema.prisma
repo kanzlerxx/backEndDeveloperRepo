@@ -127,12 +127,12 @@ model users {
   password         String             @db.VarChar(255)
   profile_image    String?            @db.VarChar(300)
   bio              String?
-  status           Boolean?           @default(false)
-  report           Int?               @db.SmallInt
-  duration         DateTime?          @db.Timestamptz(6)
+  status           Boolean?           @default(true)
   created_at       DateTime?          @default(now()) @db.Timestamptz(6)
   id_role          Int?               @default(2)
   refresh_token    String?
+  report_id        Int?
+  duration         DateTime?          @db.Timestamptz(6)
   bookmark_content bookmark_content[]
   comments         comments[]
   follow           follow[]
@@ -140,6 +140,7 @@ model users {
   like_comments    like_comments[]
   like_threads     like_threads[]
   threads          threads[]
+  report           report?            @relation(fields: [report_id], references: [id], onUpdate: NoAction)
   role_users       role_users?        @relation(fields: [id_role], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "users_roles_fkey")
 }
 
@@ -157,6 +158,13 @@ model threads_images {
   threads_id         Int
   threads_images_url String? @db.VarChar(255)
   threads            threads @relation(fields: [threads_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model report {
+  id                 Int     @id @default(autoincrement())
+  report_option      String? @db.VarChar(255)
+  report_description String? @db.VarChar(500)
+  users              users[]
 }
 
 enum role_user {
