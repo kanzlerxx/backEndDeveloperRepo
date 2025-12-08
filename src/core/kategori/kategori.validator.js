@@ -2,7 +2,7 @@ import Joi from "joi";
 
 export const kategoriValidator = {
   create: Joi.object({
-    // no-data
+   categories_name : Joi.string().required()  
   }),
   update: Joi.object({
     // no-data

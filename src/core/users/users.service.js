@@ -30,7 +30,7 @@
 
   // Jika paginate OFF → tampilkan semua
   return await this.db.users.findMany({ ...q });
-};
+    };
 
 
     findById = async (id) => {

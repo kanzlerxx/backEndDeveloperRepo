@@ -32,3 +32,14 @@ seedAll().catch((e) => {
   console.error("❌ Seed gagal:", e);
   process.exit(1);
 });
+
+main()
+  .then(async () => {
+    await prisma.$disconnect();   // WAJIB
+  })
+  .catch(async (e) => {
+    console.error(e);
+    await prisma.$disconnect();   // WAJIB
+    process.exit(1);
+  });
+
