@@ -243,7 +243,7 @@ showAllLikeThreads = async (query) => {
 
  findAllRandom = async (query, userId) => {
   const page = parseInt(query.page) || 1;
-  const limit = 5;
+  const limit = 20;
 
   let data = await this.db.threads.findMany({
     include: {

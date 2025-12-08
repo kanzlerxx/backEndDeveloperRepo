@@ -79,7 +79,7 @@ refresh = this.wrapper(async (req, res) => {
     httpOnly: true,
     secure: true,
     sameSite: "none",
-    maxAge: 15 * 1000,  
+    maxAge: 1000 * 60 * 15,  
   });
 
   res.cookie("cookies_refresh_token", newRefreshEnc, {
