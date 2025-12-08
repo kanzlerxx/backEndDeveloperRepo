@@ -23,9 +23,13 @@ class bookmark_contentController extends BaseController {
   });
 
   create = this.wrapper(async (req, res) => {
-    const data = await this.#service.create(req.body);
-    return this.created(res, data, "bookmark_content successfully created");
-  });
+  const userId = req.user.id;
+
+  const data = await this.#service.create(userId, req.body);
+
+  return this.created(res, data, "bookmark_content successfully created");
+});
+
 
   update = this.wrapper(async (req, res) => {
     const data = await this.#service.update(req.params.id, req.body);
