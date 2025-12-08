@@ -54,6 +54,9 @@ resetPassword = async (token, newPassword) => {
   let decoded;
   try {
     decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log("RAW TOKEN =", token);
+    console.log("DECODED JWT PAYLOAD =", decoded);
+
   } catch (err) {
     throw new BadRequest("Token tidak valid atau sudah kedaluwarsa");
   }

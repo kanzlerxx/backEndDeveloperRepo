@@ -8,10 +8,19 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE
 );
 
+const checkIsFollowed = (forum, userId) => {
+  if (!userId) return false;
+  return forum.follow?.some(f => f.user_id === userId) || false;
+};
+
+
+
 class forumService extends BaseService {
   constructor() {
     super(prisma);
   }
+
+  
 
   // -------------------- UPLOAD IMAGE --------------------
   async uploadImage(file, folder, forum_id) {
@@ -47,40 +56,59 @@ class forumService extends BaseService {
   }
 
 
-  findAll = async (query) => {
-    const q = this.transformBrowseQuery(query);
-    const forums = await this.db.forum.findMany({
-      ...q,
-      include: {
-        _count: {
-          select: {
-            threads: true,
-            follow: true,
-          },
-        },
-      },
-    });
-
-    const data = forums.map((forum) => {
-      const { _count, ...rest } = forum;
-      return {
-        ...rest,
-        forum_total_threads: _count.threads,
-        forum_total_follower: _count.follow,
-      };
-    });
-
-    if (query.paginate) {
-      const countData = await this.db.forum.count({ where: q.where });
-      return this.paginate(data, countData, q);
+  findAll = async (query, userId) => {
+  const forums = await this.db.forum.findMany({
+    orderBy: { id: "asc" },
+    include: {
+      follow: true, // TANPA FILTER
+      _count: {
+        select: {
+          threads: true,
+          follow: true
+        }
+      }
     }
-    return data;
-  };
+  });
 
-  findById = async (id) => {
-    const data = await this.db.forum.findUnique({   where: { id: Number(id)} });
-    return data;
+  return forums.map(forum => ({
+    id: forum.id,
+    name: forum.name,
+    forum_profile: forum.forum_profile,
+    forum_banner: forum.forum_banner,
+    id_categories: forum.id_categories,
+    user_id: forum.user_id,
+
+    forum_total_threads: forum._count.threads,
+    forum_total_follower: forum._count.follow,
+
+    // CEK FOLLOW DENGAN USERID
+    is_followed: forum.follow.some(f => f.user_id === userId)
+  }));
+};
+
+
+
+
+ findById = async (id, userId) => {
+  const forum = await this.db.forum.findUnique({
+    where: { id: Number(id) },
+    include: {
+      follow: true // TANPA WHERE FILTER
+    }
+  });
+
+  if (!forum) return null;
+
+  return {
+    ...forum,
+    forum_total_follower: forum.follow.length,
+    is_followed: forum.follow.some(f => f.user_id === userId)
   };
+};
+
+
+
+
 
   create = async (payload, profileFile, bannerFile) => {
  
@@ -117,10 +145,14 @@ class forumService extends BaseService {
       forum.forum_banner = bannerUrl;
     }
 
-    return forum;
+    return {
+      ...forum,
+      is_follow: false
+    };
+
   };
 
-  update = async (id, payload, profileFile, bannerFile) => {
+  update = async (id, payload, profileFile, bannerFile, userId) => {
     payload.id_categories = Number(payload.id_categories);
     const forum = await this.db.forum.findUnique({
       where: { id: Number(id) },
@@ -165,8 +197,16 @@ class forumService extends BaseService {
       data: updatedData,
     });
 
-    return updated;
-  };
+   return {
+      ...updated,
+      is_follow: await this.db.follow.findFirst({
+        where: {
+          user_id: userId,                    // BENAR
+          following_forum_id: updated.id
+        }
+      }) ? true : false
+    };
+};
 
   followForum = async ({ forum_id, user_id }) => {
   // 1. Cek apakah forum ada

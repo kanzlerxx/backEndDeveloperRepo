@@ -5,6 +5,7 @@ import forumValidator from "./forum.validator.js";
 import { baseValidator } from "../../base/validator.base.js";
 import auth from "../../middlewares/auth.middleware.js";
 import multer from "multer";
+import authOptional from "../../middlewares/authOpsional.middleware.js";
 const upload = multer();
 
 const r = Router(),
@@ -12,8 +13,8 @@ const r = Router(),
   controller = new forumController();
 
 r.get(
-  "/show-all"
-  ,
+  "/show-all",
+  authOptional,
   validatorMiddleware({ query: baseValidator.browseQuery }),
   controller.findAll
 );
@@ -26,7 +27,10 @@ r.delete("/unfollow",
   auth(), 
   controller.unfollowForum);
 
-r.get("/show-one/:id", controller.findById);
+r.get("/show-one/:id",
+  authOptional,
+  controller.findById
+);
 
 r.post(
   "/create",
