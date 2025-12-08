@@ -16,7 +16,7 @@ export default function auth(roles) {
           new ApiError(
             httpStatus.StatusCodes.UNAUTHORIZED,
             'NO_AUTHORIZATION',
-            'blom login'
+            'woy login dulu anjing'
           )
         );
       }

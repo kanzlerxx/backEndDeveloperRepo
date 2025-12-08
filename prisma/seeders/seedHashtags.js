@@ -19,3 +19,14 @@ export async function seedHashtags(threads) {
 
   return hashtag;
 }
+
+
+main()
+  .then(async () => {
+    await prisma.$disconnect();   // WAJIB
+  })
+  .catch(async (e) => {
+    console.error(e);
+    await prisma.$disconnect();   // WAJIB
+    process.exit(1);
+  });
