@@ -3,15 +3,15 @@ const prisma = new PrismaClient();
 
 export async function seedForum(user) {
   const category = await prisma.categories.upsert({
-    where: { categories_name: "General" },
+    where: { categories_name: "Max Verstapper" },
     update: {},
-    create: { categories_name: "General" }
+    create: { categories_name: "Max Verstapper" }
   });
 
   const forum = await prisma.forum.create({
     data: {
-      forum_title: "Forum Teknologi bandung",
-      forum_description: "Diskusi teknologi",
+      forum_title: "The world Champion of F1",
+      forum_description: "Dutch Legend Max Verstapper fans club",
       user_id: user.id,
       id_categories: category.id,
     }
@@ -21,12 +21,3 @@ export async function seedForum(user) {
 }
 
 
-main()
-  .then(async () => {
-    await prisma.$disconnect();   // WAJIB
-  })
-  .catch(async (e) => {
-    console.error(e);
-    await prisma.$disconnect();   // WAJIB
-    process.exit(1);
-  });

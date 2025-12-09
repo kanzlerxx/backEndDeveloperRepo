@@ -32,10 +32,17 @@ class usersController extends BaseController {
     return this.ok(res, data, "users successfully updated");
   });
   
-    updateProfilePhoto = this.wrapper(async (req, res) => {
-      const data = await this.#service.updateProfilePhoto(req.user.id, req.file);
-      return this.ok(res, data, "Profile photo updated");
-    });
+updateUser = this.wrapper(async (req, res) => {
+  const userId = req.user.id;
+
+  const data = await this.#service.updateUser(
+    Number(userId),
+    req.body,
+    req.file // file dari multer
+  );
+
+  return this.ok(res, data, "Profile updated successfully");
+});
 
   delete = this.wrapper(async (req, res) => {
     const data = await this.#service.delete(req.params.id);

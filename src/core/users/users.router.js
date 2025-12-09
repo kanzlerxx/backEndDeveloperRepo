@@ -33,12 +33,13 @@ r.post(
     controller.update
     );
 
-  r.put(
-        "/update-photo", 
-         auth(),
-        upload.single("image"), 
-        controller.updateProfilePhoto
-      );
+ r.put(
+  "/update-profile",
+  auth(),
+  upload.single("image"),
+  controller.updateUser
+);
+
     
 r.delete("/delete/:id", auth(['ADMIN']), controller.delete);
 

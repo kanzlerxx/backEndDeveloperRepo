@@ -11,12 +11,3 @@ export async function seedFollow(user, forum) {
 }
 
 
-main()
-  .then(async () => {
-    await prisma.$disconnect();   // WAJIB
-  })
-  .catch(async (e) => {
-    console.error(e);
-    await prisma.$disconnect();   // WAJIB
-    process.exit(1);
-  });

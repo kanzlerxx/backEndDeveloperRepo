@@ -68,7 +68,7 @@ model forum {
   id_categories        Int?
   follow               follow[]
   categories           categories? @relation(fields: [id_categories], references: [id], onUpdate: NoAction)
-  users                users?      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                users?      @relation(fields: [user_id], references: [id], onDelete: Cascade)
   threads              threads[]
 }
 
@@ -133,7 +133,7 @@ model users {
   refresh_token    String?
   duration         DateTime?          @db.Timestamptz(6)
   bookmark_content bookmark_content[]
-  comments         comments[]
+  comments         comments[]   
   follow           follow[]
   forum            forum[]
   like_comments    like_comments[]

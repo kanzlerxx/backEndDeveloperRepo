@@ -5,7 +5,7 @@ export async function seedLikes(user, threads) {
   for (const t of threads) {
     await prisma.like_threads.create({
       data: {
-        user_id: 1,
+        user_id: 19,
         threads_id: 20,
       }
     });
@@ -13,12 +13,3 @@ export async function seedLikes(user, threads) {
 }
     
 
-main()
-  .then(async () => {
-    await prisma.$disconnect();   // WAJIB
-  })
-  .catch(async (e) => {
-    console.error(e);
-    await prisma.$disconnect();   // WAJIB
-    process.exit(1);
-  });

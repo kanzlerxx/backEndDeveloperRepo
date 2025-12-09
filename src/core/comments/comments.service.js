@@ -57,14 +57,29 @@ findById = async (id) => {
   };
 };
 
-
-  createComment = async (payload, file, user_id) => {
+createComment = async (payload, file, user_id) => {
   const { comment_desc, threads_id, bind_to_comment } = payload;
 
   if (!user_id) throw new BadRequest("Unauthorized");
   if (!comment_desc) throw new BadRequest("comment_desc is required");
   if (!threads_id) throw new BadRequest("threads_id is required");
 
+  // Jika ini reply → pastikan comment yang direply ada
+  let parentComment = null;
+  if (bind_to_comment) {
+    parentComment = await this.db.comments.findUnique({
+      where: { id: Number(bind_to_comment) }
+    });
+
+    if (!parentComment) throw new NotFound("Parent comment not found");
+
+    // optional — cegah reply ke comment lain thread
+    if (parentComment.threads_id !== Number(threads_id)) {
+      throw new BadRequest("Cannot reply to a comment from different thread");
+    }
+  }
+
+  // Buat comment
   const comment = await this.db.comments.create({
     data: {
       user_id,
@@ -72,24 +87,25 @@ findById = async (id) => {
       threads_id: Number(threads_id),
       bind_to_comment: bind_to_comment ? Number(bind_to_comment) : null,
     },
+    include: {
+      _count: { select: { like_comments: true } }
+    }
   });
 
-  // Jika tidak upload file → tetap return format yang sama
-  if (!file) {
-    return {
-      ...comment,
-      total_like: 0
-    };
-  }
+  let finalResult = {
+    ...comment,
+    total_like: comment._count.like_comments,
+  };
+
+  // Kalau tidak ada file → return
+  if (!file) return finalResult;
 
   // Upload file
   const uploadPath = `comments/${comment.id}-${Date.now()}`;
 
-  const { data, error } = await supabase.storage
+  const { error } = await supabase.storage
     .from("image")
-    .upload(uploadPath, file.buffer, {
-      contentType: file.mimetype,
-    });
+    .upload(uploadPath, file.buffer, { contentType: file.mimetype });
 
   if (error) throw new Error("Upload failed: " + error.message);
 
@@ -100,13 +116,17 @@ findById = async (id) => {
   const updatedComment = await this.db.comments.update({
     where: { id: comment.id },
     data: { uploaded_file: publicUrl },
+    include: {
+      _count: { select: { like_comments: true } }
+    }
   });
 
   return {
     ...updatedComment,
-    total_like: 0
+    total_like: updatedComment._count.like_comments
   };
 };
+
 
 
 likeComment = async ({ comment_id, user_id }) => {
@@ -191,6 +211,57 @@ unlikeComment = async ({ comment_id, user_id }) => {
     const data = await this.db.comments.delete({ where: { id } });
     return data;
   };
+
+
+findByThreadsId = async (threads_id) => {
+  if (!threads_id) throw new BadRequest("threads_id is required");
+
+  const comments = await this.db.comments.findMany({
+    where: { threads_id: Number(threads_id) },
+    include: {
+      users: {
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          profile_image: true,
+          bio: true,
+          status: true,
+          created_at: true,
+          id_role: true,
+          // ❌ hidden fields:
+          password: false,
+          refresh_token: false,
+          duration: false,
+        }
+      },
+      _count: {
+        select: { like_comments: true }
+      }
+    }
+  });
+
+  // Jika tidak ada comment
+  if (!comments || comments.length === 0) {
+    return [];
+  }
+
+  // Format total like
+  return comments.map((c) => ({
+    id: c.id,
+    user_id: c.user_id,
+    comment_desc: c.comment_desc,
+    threads_id: c.threads_id,
+    bind_to_comment: c.bind_to_comment,
+    uploaded_file: c.uploaded_file,
+    created_at: c.created_at,
+    users: c.users,
+
+    // total like
+    total_like: c._count.like_comments
+  }));
+};
+
 }
 
 export default commentsService;  

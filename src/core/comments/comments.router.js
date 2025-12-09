@@ -30,6 +30,8 @@ r.post(
 
 r.post("/like", auth(), controller.likeComment);
 r.delete("/unlike", auth(), controller.unlikeComment);
+r.get("/by-thread/:threads_id", controller.findByThreadsId);
+
 
 
   
