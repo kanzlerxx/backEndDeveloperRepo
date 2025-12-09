@@ -1,7 +1,7 @@
 import BaseService from "../../base/service.base.js";
 import prisma from "../../config/prisma.db.js";
 import { createClient } from "@supabase/supabase-js";
-import { NotFound } from "../../exceptions/catch.execption.js";
+import { NotFound,BadRequest } from "../../exceptions/catch.execption.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -56,11 +56,17 @@ class forumService extends BaseService {
   }
 
 
-  findAll = async (query, userId) => {
+findAll = async (query, userId) => {
   const forums = await this.db.forum.findMany({
     orderBy: { id: "asc" },
     include: {
-      follow: true, // TANPA FILTER
+      follow: true,
+      categories: { // Relasi ke categories
+        select: {
+          id: true,
+          categories_name: true // sesuai dengan field di model
+        }
+      },
       _count: {
         select: {
           threads: true,
@@ -79,6 +85,13 @@ class forumService extends BaseService {
     forum_banner: forum.forum_banner,
     id_categories: forum.id_categories,
     
+    // TAMBAHKAN DATA CATEGORIES
+    category_name: forum.categories?.categories_name || null,
+    // atau jika ingin objek lengkap:
+    // category: forum.categories ? {
+    //   id: forum.categories.id,
+    //   name: forum.categories.categories_name
+    // } : null,
 
     forum_total_threads: forum._count.threads,
     forum_total_follower: forum._count.follow,
@@ -89,13 +102,17 @@ class forumService extends BaseService {
 };
 
 
-
-
- findById = async (id, userId) => {
+findById = async (id, userId) => {
   const forum = await this.db.forum.findUnique({
     where: { id: Number(id) },
-   include: {
-      follow: true, // TANPA FILTER
+    include: {
+      follow: true,
+      categories: { // Tambahkan include categories
+        select: {
+          id: true,
+          categories_name: true
+        }
+      },
       _count: {
         select: {
           threads: true,
@@ -115,8 +132,8 @@ class forumService extends BaseService {
     forum_profile: forum.forum_profile,
     forum_banner: forum.forum_banner,
     id_categories: forum.id_categories,
+    category_name: forum.categories?.categories_name || null, // Tambahkan
     
-
     forum_total_threads: forum._count.threads,
     forum_total_follower: forum._count.follow,
 
@@ -130,6 +147,12 @@ findForumsByTotalFollower = async (userId) => {
     orderBy: { forum_total_follower: "desc" },
     include: {
       follow: true,
+      categories: { // Tambahkan include categories
+        select: {
+          id: true,
+          categories_name: true
+        }
+      },
       _count: {
         select: { 
           threads: true, 
@@ -147,8 +170,8 @@ findForumsByTotalFollower = async (userId) => {
     forum_profile: forum.forum_profile,
     forum_banner: forum.forum_banner,
     id_categories: forum.id_categories,
+    category_name: forum.categories?.categories_name || null, // Tambahkan
     
-
     forum_total_threads: forum._count.threads,
     forum_total_follower: forum._count.follow,
 
@@ -164,105 +187,129 @@ findForumsByTotalFollower = async (userId) => {
 
 
 
-
   create = async (payload, profileFile, bannerFile) => {
- 
-    // Step 1: Create forum without images
-    payload.id_categories = Number(payload.id_categories);
-    const forum = await this.db.forum.create({
-      data: payload,
-    });
-
-    let profileUrl = null;
-    let bannerUrl = null;
-
-    // Step 2: Upload profile image
-    if (profileFile) {
-      profileUrl = await this.uploadImage(profileFile, "forum_profile", forum.id);
-    }
-
-    // Step 3: Upload banner image
-    if (bannerFile) {
-      bannerUrl = await this.uploadImage(bannerFile, "forum_banner", forum.id);
-    }
-
-    // Step 4: Update forum with image URLs
-    if (profileUrl || bannerUrl) {
-      await this.db.forum.update({
-        where: { id: forum.id },
-        data: {
-          forum_profile: profileUrl,
-          forum_banner: bannerUrl,
-        },
-      });
-
-      forum.forum_profile = profileUrl;
-      forum.forum_banner = bannerUrl;
-    }
-
-    return {
-      ...forum,
-      is_follow: false
-    };
-
-  };
-
-  update = async (id, payload, profileFile, bannerFile, userId) => {
-    payload.id_categories = Number(payload.id_categories);
-    const forum = await this.db.forum.findUnique({
-      where: { id: Number(id) },
-    });
-
-    if (!forum) throw new NotFound("Forum not found");
-
-    // UPDATE TEXT DATA FIRST
-    const updatedData = {};
-    for (const key of Object.keys(payload)) {
-      if (payload[key] !== undefined && payload[key] !== "") {
-        updatedData[key] = payload[key];
-      }
-    }
-
-    // Prepare image URL containers
-    let profileUrl = null;
-    let bannerUrl = null;
-
-    // UPDATE PROFILE PHOTO
-    if (profileFile) {
-      if (forum.forum_profile) {
-        await this.deleteOldImage(forum.forum_profile, "forum_profile");
-      }
-
-      profileUrl = await this.uploadImage(profileFile, "forum_profile", id);
-      updatedData.forum_profile = profileUrl;
-    }
-
-    // UPDATE BANNER
-    if (bannerFile) {
-      if (forum.forum_banner) {
-        await this.deleteOldImage(forum.forum_banner, "forum_banner");
-      }
-
-      bannerUrl = await this.uploadImage(bannerFile, "forum_banner", id);
-      updatedData.forum_banner = bannerUrl;
-    }
-
-    const updated = await this.db.forum.update({
-      where: { id: Number(id) },
-      data: updatedData,
-    });
-
-   return {
-      ...updated,
-      is_follow: await this.db.follow.findFirst({
-        where: {
-          user_id: userId,                    // BENAR
-          following_forum_id: updated.id
+  // Step 1: Create forum without images
+  payload.id_categories = Number(payload.id_categories);
+  
+  // Buat forum dengan include categories
+  const forum = await this.db.forum.create({
+    data: payload,
+    include: {
+      categories: { // Include categories untuk response
+        select: {
+          id: true,
+          categories_name: true
         }
-      }) ? true : false
-    };
+      }
+    }
+  });
+
+  let profileUrl = null;
+  let bannerUrl = null;
+
+  // Step 2: Upload profile image
+  if (profileFile) {
+    profileUrl = await this.uploadImage(profileFile, "forum_profile", forum.id);
+  }
+
+  // Step 3: Upload banner image
+  if (bannerFile) {
+    bannerUrl = await this.uploadImage(bannerFile, "forum_banner", forum.id);
+  }
+
+  // Step 4: Update forum with image URLs
+  if (profileUrl || bannerUrl) {
+    await this.db.forum.update({
+      where: { id: forum.id },
+      data: {
+        forum_profile: profileUrl,
+        forum_banner: bannerUrl,
+      },
+    });
+
+    forum.forum_profile = profileUrl;
+    forum.forum_banner = bannerUrl;
+  }
+
+  return {
+    ...forum,
+    category_name: forum.categories?.categories_name || null, // Tambahkan
+    is_follow: false
+  };
 };
 
+update = async (id, payload, profileFile, bannerFile, userId) => {
+  payload.id_categories = Number(payload.id_categories);
+  const forum = await this.db.forum.findUnique({
+    where: { id: Number(id) },
+    include: {
+      categories: { // Include categories untuk mendapatkan data lama
+        select: {
+          id: true,
+          categories_name: true
+        }
+      }
+    }
+  });
+
+  if (!forum) throw new NotFound("Forum not found");
+
+  // UPDATE TEXT DATA FIRST
+  const updatedData = {};
+  for (const key of Object.keys(payload)) {
+    if (payload[key] !== undefined && payload[key] !== "") {
+      updatedData[key] = payload[key];
+    }
+  }
+
+  // Prepare image URL containers
+  let profileUrl = null;
+  let bannerUrl = null;
+
+  // UPDATE PROFILE PHOTO
+  if (profileFile) {
+    if (forum.forum_profile) {
+      await this.deleteOldImage(forum.forum_profile, "forum_profile");
+    }
+
+    profileUrl = await this.uploadImage(profileFile, "forum_profile", id);
+    updatedData.forum_profile = profileUrl;
+  }
+
+  // UPDATE BANNER
+  if (bannerFile) {
+    if (forum.forum_banner) {
+      await this.deleteOldImage(forum.forum_banner, "forum_banner");
+    }
+
+    bannerUrl = await this.uploadImage(bannerFile, "forum_banner", id);
+    updatedData.forum_banner = bannerUrl;
+  }
+
+  const updated = await this.db.forum.update({
+    where: { id: Number(id) },
+    data: updatedData,
+    include: {
+      categories: { // Include categories untuk response update
+        select: {
+          id: true,
+          categories_name: true
+        }
+      }
+    }
+  });
+
+  return {
+    ...updated,
+    category_name: updated.categories?.categories_name || null, // Tambahkan
+    is_follow: await this.db.follow.findFirst({
+      where: {
+        user_id: userId,
+        following_forum_id: updated.id
+      }
+    }) ? true : false
+  };
+};
   followForum = async ({ forum_id, user_id }) => {
   // 1. Cek apakah forum ada
   const forum = await this.db.forum.findUnique({

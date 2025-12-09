@@ -3,6 +3,12 @@ import prisma from '../../config/prisma.db.js';
 import { createClient } from "@supabase/supabase-js";
 import { NotFound,BadRequest } from "../../exceptions/catch.execption.js";
 
+
+const checkIsCommentLiked = (comment, userId) => {
+  if (!userId) return false; // guest atau tidak login
+  return comment.like_comments?.some(like => like.user_id === userId) || false;
+};
+
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE
@@ -13,73 +19,70 @@ class commentsService extends BaseService {
     super(prisma);
   }
 
-findAll = async (query) => {
+findAll = async (query, userId) => {
   const q = this.transformBrowseQuery(query);
 
   const data = await this.db.comments.findMany({
     ...q,
     include: {
-      _count: {
-        select: { like_comments: true }
-      }
+      like_comments: true,
+          users: {
+        select: {
+          id: true,
+          username: true,
+          profile_image: true,
+          bio: true,
+        }
+      }, 
+      _count: { select: { like_comments: true }},
     }
   });
 
-  // Tambahkan total_like sebagai field baru
-  const formatted = data.map((c) => ({
-    ...c,
-    total_like: c._count.like_comments
-  }));
+  return data.map(c => {
+    const { _count, like_comments, ...rest } = c;
 
-  if (query.paginate) {
-    const countData = await this.db.comments.count({ where: q.where });
-    return this.paginate(formatted, countData, q);
-  }
-
-  return formatted;
+    return {
+      ...rest,
+      total_like: _count.like_comments,
+      is_liked: checkIsCommentLiked(c, userId),
+    };
+  });
 };
 
-findById = async (id) => {
+findById = async (id, userId) => {
   const data = await this.db.comments.findUnique({
     where: { id },
     include: {
-      _count: {
-        select: { like_comments: true }
-      }
+      like_comments: true,
+         users: {
+        select: {
+          id: true,
+          username: true,
+          profile_image: true,
+          bio: true,
+        }
+      }, 
+      _count: { select: { like_comments: true }},
     }
   });
 
   if (!data) return null;
 
+  const { _count, like_comments, ...rest } = data;
+
   return {
-    ...data,
-    total_like: data._count.like_comments
+    ...rest,
+    total_like: _count.like_comments,
+    is_liked: checkIsCommentLiked(data, userId),
   };
 };
+
 
 createComment = async (payload, file, user_id) => {
   const { comment_desc, threads_id, bind_to_comment } = payload;
 
   if (!user_id) throw new BadRequest("Unauthorized");
-  if (!comment_desc) throw new BadRequest("comment_desc is required");
-  if (!threads_id) throw new BadRequest("threads_id is required");
 
-  // Jika ini reply → pastikan comment yang direply ada
-  let parentComment = null;
-  if (bind_to_comment) {
-    parentComment = await this.db.comments.findUnique({
-      where: { id: Number(bind_to_comment) }
-    });
-
-    if (!parentComment) throw new NotFound("Parent comment not found");
-
-    // optional — cegah reply ke comment lain thread
-    if (parentComment.threads_id !== Number(threads_id)) {
-      throw new BadRequest("Cannot reply to a comment from different thread");
-    }
-  }
-
-  // Buat comment
   const comment = await this.db.comments.create({
     data: {
       user_id,
@@ -88,56 +91,93 @@ createComment = async (payload, file, user_id) => {
       bind_to_comment: bind_to_comment ? Number(bind_to_comment) : null,
     },
     include: {
-      _count: { select: { like_comments: true } }
+      like_comments: true,
+      _count: { select: { like_comments: true }},
     }
   });
 
-  let finalResult = {
+  let formatted = {
     ...comment,
-    total_like: comment._count.like_comments,
+    total_like: 0,
+    is_liked: false,       // selalu false saat create
   };
 
-  // Kalau tidak ada file → return
-  if (!file) return finalResult;
+  // Jika tidak upload file
+  if (!file) return formatted;
 
-  // Upload file
+  // Upload file ke Supabase
   const uploadPath = `comments/${comment.id}-${Date.now()}`;
 
   const { error } = await supabase.storage
     .from("image")
-    .upload(uploadPath, file.buffer, { contentType: file.mimetype });
+    .upload(uploadPath, file.buffer, {
+      contentType: file.mimetype
+    });
 
   if (error) throw new Error("Upload failed: " + error.message);
 
-  const publicUrl = supabase.storage
-    .from("image")
+  const publicUrl = supabase.storage.from("image")
     .getPublicUrl(uploadPath).data.publicUrl;
 
-  const updatedComment = await this.db.comments.update({
+  const updated = await this.db.comments.update({
     where: { id: comment.id },
     data: { uploaded_file: publicUrl },
     include: {
-      _count: { select: { like_comments: true } }
+      like_comments: true,
+      _count: { select: { like_comments: true }},
     }
   });
 
   return {
-    ...updatedComment,
-    total_like: updatedComment._count.like_comments
+    ...updated,
+    total_like: updated._count.like_comments,
+    is_liked: false
   };
 };
 
 
+findReplies = async (comment_id, userId) => {
+  const replies = await this.db.comments.findMany({
+    where: {
+      bind_to_comment: Number(comment_id)
+    },
+    include: {
+      like_comments: true,
+      users: {
+        select: {
+          id: true,
+          username: true,
+          profile_image: true,
+          bio: true,
+        }
+      },
+      _count: {
+        select: { like_comments: true }
+      }
+    },
+    orderBy: {
+      id: "asc"
+    }
+  });
+
+  return replies.map(r => ({
+    ...r,
+    total_like: r._count.like_comments,
+    is_liked: checkIsCommentLiked(r, userId)
+  }));
+};
+
+
+
 
 likeComment = async ({ comment_id, user_id }) => {
-  // 1. Pastikan comment ada
   const comment = await this.db.comments.findUnique({
-    where: { id: comment_id }
+    where: { id: comment_id },
+    include: { like_comments: true }
   });
 
   if (!comment) throw new NotFound("Comment not found");
 
-  // 2. Cek apakah user sudah like
   const existing = await this.db.like_comments.findUnique({
     where: {
       user_id_comment_id: {
@@ -151,61 +191,76 @@ likeComment = async ({ comment_id, user_id }) => {
     throw new BadRequest("You have already liked this comment");
   }
 
-  // 3. Buat like baru
-  const newLike = await this.db.like_comments.create({
-    data: {
-      user_id,
-      comment_id
+  await this.db.like_comments.create({
+    data: { user_id, comment_id }
+  });
+
+  // ambil lagi untuk hitung ulang
+  const updated = await this.db.comments.findUnique({
+    where: { id: comment_id },
+    include: {
+      like_comments: true,
+      _count: { select: { like_comments: true }}
     }
   });
 
   return {
-    message: "Comment liked successfully",
-    data: newLike
+    ...updated,
+    total_like: updated._count.like_comments,
+    is_liked: true,
   };
 };
+
 
 unlikeComment = async ({ comment_id, user_id }) => {
-  // 1. Pastikan comment ada
-  const comment = await this.db.comments.findUnique({
-    where: { id: comment_id }
-  });
-
-  if (!comment) throw new NotFound("Comment not found");
-
-  // 2. Cek apakah user pernah like
   const existing = await this.db.like_comments.findUnique({
     where: {
-      user_id_comment_id: {
-        user_id,
-        comment_id
-      }
+      user_id_comment_id: { user_id, comment_id }
     }
   });
 
-  if (!existing) {
-    throw new BadRequest("You have not liked this comment");
-  }
+  if (!existing) throw new BadRequest("You have not liked this comment");
 
-  // 3. Hapus like
   await this.db.like_comments.delete({
     where: {
-      user_id_comment_id: {
-        user_id,
-        comment_id
+      user_id_comment_id: { user_id, comment_id }
+    }
+  });
+
+  const updated = await this.db.comments.findUnique({
+    where: { id: comment_id },
+    include: {
+      like_comments: true,
+      _count: { select: { like_comments: true }}
+    }
+  });
+
+  return {
+    ...updated,
+    total_like: updated._count.like_comments,
+    is_liked: false
+  };
+};
+
+
+update = async (id, payload, userId) => {
+  const updated = await this.db.comments.update({
+    where: { id: Number(id) },
+    data: payload,
+    include: {
+      like_comments: true,
+      _count: {
+        select: { like_comments: true }
       }
     }
   });
 
   return {
-    message: "Comment unliked successfully"
+    ...updated,
+    total_like: updated._count.like_comments,
+    is_liked: checkIsCommentLiked(updated, userId)
   };
 };
-
-  update = async (id, payload) => {
-    const data = await this.db.comments.update({ where: { id }, data: payload });
-    return data;
-  };
 
   delete = async (id) => {
     const data = await this.db.comments.delete({ where: { id } });
@@ -213,54 +268,33 @@ unlikeComment = async ({ comment_id, user_id }) => {
   };
 
 
-findByThreadsId = async (threads_id) => {
-  if (!threads_id) throw new BadRequest("threads_id is required");
-
+findByThreadsId = async (threads_id, userId) => {
   const comments = await this.db.comments.findMany({
     where: { threads_id: Number(threads_id) },
     include: {
+      like_comments: true,
       users: {
         select: {
           id: true,
           username: true,
-          email: true,
           profile_image: true,
           bio: true,
-          status: true,
-          created_at: true,
-          id_role: true,
-          // ❌ hidden fields:
-          password: false,
-          refresh_token: false,
-          duration: false,
         }
       },
       _count: {
         select: { like_comments: true }
       }
-    }
+    },
+    orderBy: { id: "asc" }
   });
 
-  // Jika tidak ada comment
-  if (!comments || comments.length === 0) {
-    return [];
-  }
-
-  // Format total like
-  return comments.map((c) => ({
-    id: c.id,
-    user_id: c.user_id,
-    comment_desc: c.comment_desc,
-    threads_id: c.threads_id,
-    bind_to_comment: c.bind_to_comment,
-    uploaded_file: c.uploaded_file,
-    created_at: c.created_at,
-    users: c.users,
-
-    // total like
-    total_like: c._count.like_comments
+  return comments.map(c => ({
+    ...c,
+    total_like: c._count.like_comments,
+    is_liked: checkIsCommentLiked(c, userId)
   }));
 };
+
 
 }
 

@@ -1,5 +1,5 @@
   import BaseController from "../../base/controller.base.js";
-  import { NotFound } from "../../exceptions/catch.execption.js";
+  import { NotFound,BadRequest } from "../../exceptions/catch.execption.js";
   import threadsService from "./threads.service.js";
 
   class threadsController extends BaseController {

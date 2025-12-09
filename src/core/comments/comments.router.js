@@ -5,6 +5,7 @@ import commentsValidator from "./comments.validator.js";
 import { baseValidator } from "../../base/validator.base.js";
 import auth from "../../middlewares/auth.middleware.js";
 import multer from "multer";
+import authOptional from "../../middlewares/authOpsional.middleware.js";
 
 
 const upload = multer();
@@ -15,6 +16,7 @@ const r = Router(),
 
 r.get(
   "/show-all",
+  auth(),
   validatorMiddleware({ query: baseValidator.browseQuery }),
   controller.findAll
 );
@@ -28,21 +30,26 @@ r.post(
   controller.createComment
 );
 
+r.get("/replies/:comment_id", 
+  authOptional,
+  controller.showReplies);
+
+
 r.post("/like", auth(), controller.likeComment);
 r.delete("/unlike", auth(), controller.unlikeComment);
-r.get("/by-thread/:threads_id", controller.findByThreadsId);
+r.get("/by-thread/:threads_id", authOptional, controller.findByThreadsId);
 
 
 
   
   r.put(
     "/update/:id",
-    auth(['ADMIN']),
+    auth(),
     validatorMiddleware({ body: validator.update }),
     controller.update
     );
     
-r.delete("/delete/:id", auth(['ADMIN']), controller.delete);
+r.delete("/delete/:id", auth(), controller.delete);
 
 const commentsRouter = r;
 export default commentsRouter;
