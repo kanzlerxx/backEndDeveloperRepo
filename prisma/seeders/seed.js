@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 
+import { seedUsers } from './userSeeder.js';
 import { seedForum } from './seedForum.js';
 import { seedThreads } from './seedThreads.js';
 import { seedHashtags } from './seedHashtags.js';
@@ -7,39 +8,62 @@ import { seedComments } from './seedComments.js';
 import { seedLikes } from './seedLikes.js';
 import { seedBookmarks } from './seedBookmarks.js';
 import { seedFollow } from './seedFollow.js';
-import { seedUsers} from './userSeeder.js';
+
 const prisma = new PrismaClient();
 
 async function seedAll() {
-  const user = await prisma.users.findFirst();
-  if (!user) throw new Error("User belum ada. Jalankan seed user dulu!");
-
   console.log("🚀 Mulai seeding...");
 
-  await seedUsers();
-  const forum = await seedForum(user);
-  const threads = await seedThreads(user, forum);
-  const hashtag = await seedHashtags(threads);
-  await seedComments(user, threads);
-  await seedLikes(user, threads);
-  await seedBookmarks(user, threads);
-  await seedFollow(user, forum);
+  // 1. Seed user dulu
+  const user = await seedUsers();
+  console.log("✔ User seeded:", user.email);
 
-  console.log("✅ Semua seeder selesai!");
+  // 2. Seed forum
+  const forum = await seedForum(user);
+  console.log("✔ Forum seeded");
+
+  // 3. Seed threads
+  const threads = await seedThreads(user, forum);
+  console.log("✔ Threads seeded");
+
+  // 4. Seed hashtags
+  const hashtag = await seedHashtags(threads);
+  console.log("✔ Hashtags seeded");
+
+  // 5. Seed comments
+  await seedComments(user, threads);
+  console.log("✔ Comments seeded");
+
+  // 6. Seed likes
+  await seedLikes(user, threads);
+  console.log("✔ Likes seeded");
+
+  // 7. Seed bookmarks
+  await seedBookmarks(user, threads);
+  console.log("✔ Bookmarks seeded");
+
+  // 8. Seed follow
+  await seedFollow(user, forum);
+  console.log("✔ Follow seeded");
+
+  console.log("🎉 Semua seeder selesai!");
 }
 
-seedAll().catch((e) => {
-  console.error("❌ Seed gagal:", e);
-  process.exit(1);
-});
-
-main()
-  .then(async () => {
-    await prisma.$disconnect();   // WAJIB
-  })
-  .catch(async (e) => {
-    console.error(e);
-    await prisma.$disconnect();   // WAJIB
+seedAll()
+  .catch((e) => {
+    console.error("❌ Seed gagal:", e);
     process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
   });
 
+  main()
+  .catch((e) => {
+    console.error("❌ Seed gagal:", e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
+  
