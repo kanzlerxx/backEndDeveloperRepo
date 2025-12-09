@@ -33,6 +33,24 @@
       return this.ok(res, data, "threads successfully retrieved");
     });
 
+    findThreadsByForumId = this.wrapper(async (req, res) => {
+    const userId = req.user?.id;
+    const forumId = req.params.id;
+
+    const data = await this.#service.findThreadsByForumId(Number(forumId), userId);
+
+    return this.ok(res, data, "threads by forum id");
+    });
+
+
+    findThreadsFromFollowingForum = this.wrapper(async (req, res) => {
+      const userId = req.user.id;
+
+      const data = await this.#service.findThreadsFromFollowingForum(userId);
+
+      return this.ok(res, data, "threads from followed forums");
+    });
+
 likeThread = this.wrapper(async (req, res) => {
 
   const { thread_id } = req.body;

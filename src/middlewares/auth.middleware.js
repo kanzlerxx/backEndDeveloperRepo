@@ -16,7 +16,7 @@ export default function auth(roles) {
           new ApiError(
             httpStatus.StatusCodes.UNAUTHORIZED,
             'NO_AUTHORIZATION',
-            ''
+            'Please Login First'
           )
         );
       }
@@ -33,6 +33,9 @@ export default function auth(roles) {
       let decoded;
       try {
         decoded = verifyToken(token); // HARUS pakai public key
+        console.log("RAW TOKEN =", token);
+        console.log("DECODED JWT PAYLOAD =", decoded);
+
       } catch (err) {
         return next(new Unauthenticated("Invalid or expired token"));
       }

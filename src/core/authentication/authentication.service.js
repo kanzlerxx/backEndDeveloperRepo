@@ -5,6 +5,7 @@
   import { generateAccessToken, generateRefreshToken,} from '../../helpers/jwt.helper.js';
   import prisma from '../../config/prisma.db.js';
   import { createClient } from '@supabase/supabase-js';
+import { duration } from 'moment';
 
       const JWT_SECRET = process.env.JWT_SECRET || "secret_reset_password";
     const supabase = createClient(
@@ -54,6 +55,9 @@ resetPassword = async (token, newPassword) => {
   let decoded;
   try {
     decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log("RAW TOKEN =", token);
+    console.log("DECODED JWT PAYLOAD =", decoded);
+
   } catch (err) {
     throw new BadRequest("Token tidak valid atau sudah kedaluwarsa");
   }
@@ -209,14 +213,16 @@ register = async (payload) => {
     email: user.email,
     profile_image: user.profile_image,
     bio: user.bio,
-    id_role: user.id_role,
     status: user.status,
     created_at: user.created_at,
+    id_role: user.id_role,
+    duration: user.duration,
+    
+    
   };
 
   return {
     data: sanitized,
-    message: "Account successfully registered",
   };
 };
 

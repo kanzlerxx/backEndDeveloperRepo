@@ -11,16 +11,37 @@ class forumController extends BaseController {
   }
 
   findAll = this.wrapper(async (req, res) => {
-    const data = await this.#service.findAll(req.query);
-    return this.ok(res, data, "forums successfully retrieved");
+    const userId = req.user?.id;
+const data = await this.#service.findAll(req.query, userId);
+
+
+const sanitizedItems = data.map(item => {
+  const { follow, ...rest } = item;
+  return rest;
+});
+
+return this.ok(res, sanitizedItems);
   });
+
 
   findById = this.wrapper(async (req, res) => {
-    const data = await this.#service.findById(req.params.id);
-    if (!data) throw new NotFound("forum not found");
 
-    return this.ok(res, data, "forum successfully retrieved");
-  });
+  const userId = req.user?.id;
+const data = await this.#service.findById(req.params.id, userId);
+
+
+  if (!data) throw new NotFound("forum not found");
+
+  return this.ok(res, data, "forum successfully retrieved");
+});
+
+findForumsByTotalFollower = this.wrapper(async (req, res) => {
+  const userId = req.user?.id;
+  const data = await this.#service.findForumsByTotalFollower(userId);
+
+  return this.ok(res, data, "forum sorted by total follower");
+});
+
 
   followForum = this.wrapper(async (req, res) => {
   const { forum_id } = req.body;
@@ -79,17 +100,20 @@ unfollowForum = this.wrapper(async (req, res) => {
 
 
 update = this.wrapper(async (req, res) => {
-  const { forum_profile, forum_banner } = req.files;
+  const userId = req.user.id;
 
   const data = await this.#service.update(
     req.params.id,
     req.body,
-    forum_profile?.[0],
-    forum_banner?.[0]
+    req.files?.forum_profile?.[0],
+    req.files?.forum_banner?.[0],
+    userId
   );
 
   return this.ok(res, data, "forum successfully updated");
 });
+
+  
 
 
   delete = this.wrapper(async (req, res) => {
