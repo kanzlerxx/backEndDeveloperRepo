@@ -10,28 +10,18 @@ import { upload } from "../../middlewares/upload.middleware.js";
 const r = Router(),
   validator = usersValidator,
   controller = new usersController();
-
+  //digunakan untuk melihat semua user
 r.get(
   "/show-all",
   validatorMiddleware({ query: baseValidator.browseQuery }),
   controller.findAll
 );
 
+
 r.get("/show-one/:id", controller.findById);
 
-r.post(
-  "/create",
-  auth(['ADMIN']),
-  validatorMiddleware({ body: validator.create }),
-  controller.create
-  );
-  
-  r.put(
-    "/update/:id",
-    auth(['ADMIN']),
-    validatorMiddleware({ body: validator.update }),
-    controller.update
-    );
+
+
 
  r.put(
   "/update-profile",

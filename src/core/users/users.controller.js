@@ -22,15 +22,7 @@ class usersController extends BaseController {
     return this.ok(res, data, "users successfully retrieved");
   });
 
-  create = this.wrapper(async (req, res) => {
-    const data = await this.#service.create(req.body);
-    return this.created(res, data, "users successfully created");
-  });
 
-  update = this.wrapper(async (req, res) => {
-    const data = await this.#service.update(req.params.id, req.body);
-    return this.ok(res, data, "users successfully updated");
-  });
   
 updateUser = this.wrapper(async (req, res) => {
   const userId = req.user.id;

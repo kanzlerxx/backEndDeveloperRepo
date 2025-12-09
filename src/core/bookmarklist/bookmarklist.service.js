@@ -1,5 +1,6 @@
 import BaseService from "../../base/service.base.js";
 import prisma from '../../config/prisma.db.js';
+import { Forbidden } from "../../exceptions/catch.execption.js";
 
 class bookmarklistService extends BaseService {
   constructor() {

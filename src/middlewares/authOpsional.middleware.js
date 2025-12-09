@@ -6,13 +6,13 @@ export default async function authOptional(req, res, next) {
   try {
     const encryptedToken = req.cookies?.cookies_access_token;
 
-    // 🔹 Jika tidak ada token → user = null → guest
+    //Jika tidak ada token → user = null → guest
     if (!encryptedToken) {
       req.user = null;
       return next();
     }
 
-    // 🔹 decrypt token
+    // decrypt token
     let token;
     try {
       token = decrypt(encryptedToken);
@@ -21,7 +21,7 @@ export default async function authOptional(req, res, next) {
       return next();
     }
 
-    // 🔹 verify JWT
+    //verify JWT
     let decoded;
     try {
       decoded = verifyToken(token);
@@ -30,7 +30,7 @@ export default async function authOptional(req, res, next) {
       return next();
     }
 
-    // 🔹 ambil user dari DB
+    //ambil user dari DB
     const user = await prisma.users.findFirst({
       where: { id: decoded.userId },
       include: { role_users: true },

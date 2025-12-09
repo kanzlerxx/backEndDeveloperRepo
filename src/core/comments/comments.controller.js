@@ -21,17 +21,18 @@ findByThreadsId = this.wrapper(async (req, res) => {
 
 
 
-  findAll = this.wrapper(async (req, res) => {
-    const data = await this.#service.findAll(req.query);
-    return this.ok(res, data, "commentss successfully retrieved");
-  });
+findAll = this.wrapper(async (req, res) => {
+  const userId = req.user?.id || null;
+  const data = await this.#service.findAll(req.query, userId);
+  return this.ok(res, data);
+});
 
-  findById = this.wrapper(async (req, res) => {
-    const data = await this.#service.findById(req.params.id);
-    if (!data) throw new NotFound("comments not found");
+ findById = this.wrapper(async (req, res) => {
+  const userId = req.user?.id || null;
+  const data = await this.#service.findById(Number(req.params.id), userId);
+  return this.ok(res, data);
+});
 
-    return this.ok(res, data, "comments successfully retrieved");
-  });
 
    createComment = this.wrapper(async (req, res) => {
   const user_id = req.user.id;
@@ -43,6 +44,16 @@ findByThreadsId = this.wrapper(async (req, res) => {
   return this.ok(res, data, "Comment created successfully");
 });
  
+showReplies = this.wrapper(async (req, res) => {
+  const { comment_id } = req.params;
+
+  if (!comment_id) throw new BadRequest("comment_id is required");
+
+  const data = await this.#service.findReplies(Number(comment_id));
+
+  return this.ok(res, data, "Replies retrieved successfully");
+});
+
 
 likeComment = this.wrapper(async (req, res) => {
   const { comment_id } = req.body;
