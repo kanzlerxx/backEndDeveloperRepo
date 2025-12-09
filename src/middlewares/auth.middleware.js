@@ -21,7 +21,7 @@ export default function auth(roles) {
         );
       }
 
-      // ⬇️ Decrypt cookie → JWT string
+      // Decrypt cookie → JWT string
       let token;
       try {
         token = decrypt(encryptedToken);
@@ -29,28 +29,22 @@ export default function auth(roles) {
         return next(new Unauthenticated("Invalid encrypted token"));
       }
 
-      // ⬇️ Verify JWT
+      // Verify JWT
       let decoded;
       try {
-        decoded = verifyToken(token); // HARUS pakai public key
-        console.log("RAW TOKEN =", token);
-        console.log("DECODED JWT PAYLOAD =", decoded);
-
+        decoded = verifyToken(token);
       } catch (err) {
         return next(new Unauthenticated("Invalid or expired token"));
       }
 
-      // ⬇️ Ambil ID dari token
       const userId = decoded?.userId;
-
       if (!userId) {
         return next(new Unauthenticated("Teu login"));
       }
 
-
       req.userId = userId;
 
-      // ⬇️ Fetch user
+      // Fetch user
       const user = await prisma.users.findFirst({
         where: { id: userId },
         include: { role_users: true },
@@ -66,7 +60,38 @@ export default function auth(roles) {
         );
       }
 
-      // ⬇️ Role check
+      // =====================================================================
+      // CHECK BAN STATUS
+      // =====================================================================
+
+      // 1. Jika sedang diban dan waktunya belum lewat → block login
+      if (user.status === false) {
+  if (user.duration && user.duration > new Date()) {
+    return next(
+      new Unauthenticated(
+        "Your account is temporarily banned until " + user.duration
+      )
+    );
+  }
+}
+
+
+      // 2. Jika ban sudah lewat → auto unban
+      if (user.status === false && user.duration && user.duration <= new Date()) {
+  await prisma.users.update({
+    where: { id: user.id },
+    data: {
+      status: true,
+      duration: null  
+    }
+  });
+  user.status = true;
+}
+
+
+      // =====================================================================
+
+      // Role check
       if (roles && roles.length > 0) {
         const userRoleCodes = user.role_users.map(r => r.roles.code);
         const hasAccess = roles.some(r => userRoleCodes.includes(r));
@@ -86,7 +111,6 @@ export default function auth(roles) {
       next();
 
     } catch (e) {
-
       if (e.message === 'jwt expired') {
         return next(
           new ApiError(

@@ -36,7 +36,18 @@ update: Joi.object({
     .allow(null, '')
     .optional(),
 })
-.min(1) // minimal harus ada satu field yang diupdate
+.min(1),
+
+forgetPassword: Joi.object({
+    email: Joi.string().email().required(),
+  }),
+
+  resetPassword: Joi.object({
+    token: Joi.string().required(),
+    newPassword: Joi.string().min(6).required(),
+  }),
+  
+  // minimal harus ada satu field yang diupdate
 
 };
 

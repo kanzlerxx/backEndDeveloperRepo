@@ -5,6 +5,8 @@
   import { generateAccessToken, generateRefreshToken,} from '../../helpers/jwt.helper.js';
   import prisma from '../../config/prisma.db.js';
   import { createClient } from '@supabase/supabase-js';
+  import { sendEmail } from "../../utils/sendEmail.js";
+
 
       const JWT_SECRET = process.env.JWT_SECRET || "secret_reset_password";
     const supabase = createClient(
@@ -16,66 +18,85 @@
     constructor() {
       super(prisma);
     }
-forgetPassword = async (email) => {
+  forgetPassword = async (email) => {
+  console.log("FORGETPASSWORD SERVICE START:", email);
   const user = await this.db.users.findUnique({
-    where:  { email: String(email) }
-  });     
+    where: { email }
+  });
 
-  if (!user) throw new NotFound("Akun tidak ditemukan");
+  console.log("USER QUERY RESULT:", !!user, user ? user.email : null);
 
-  const token = jwt.sign(
-    { userId: user.id, email: user.email },
-    process.env.JWT_SECRET,
-    { expiresIn: "24h" }
-  );
+  if (!user) {
+    console.log("USER NOT FOUND -> throw NotFound");
+    throw new NotFound("Account not found");
+  }
 
-  const resetLink = `
-  <!DOCTYPE html>
-  <html>
-  <body>
-    <h2>Halo ${user.username || "Pengguna"}</h2>
-    <p>Klik link di bawah untuk reset password:</p>
-    <a href="http://localhost:5173/reset-password?token=${token}">
-      Reset Password
-    </a>
-    <p>Link berlaku 24 jam.</p>
-  </body>
-  </html>
-  `;
+  let token;
+  try {
+    token = jwt.sign(
+      { userId: user.id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: "24h" }
+    );
+    console.log("RESET TOKEN CREATED");
+  } catch (err) {
+    console.error("JWT SIGN ERROR:", err);
+    throw err;
+  }
 
-  await sendEmail(user.email, "Reset Password", resetLink);
+  const resetLink = `http://localhost:5173/reset-password?token=${token}`;
+  console.log("RESET LINK:", resetLink);
 
-  return { message: "Reset password sent" };
+  // panggil sendEmail dengan try/catch untuk melihat error pasti
+  try {
+    console.log("CALLING sendEmail...");
+    const res = await sendEmail(
+      user.email,
+      "Reset Password",
+      `
+        <h2>Hello ${user.username}</h2>
+        <p>Click the link to reset your password:</p>
+        <a href="${resetLink}">${resetLink}</a>
+      `
+    );
+    console.log("sendEmail RESPONSE:", res);
+  } catch (err) {
+    console.error("sendEmail ERROR CAUGHT:", err && err.toString ? err.toString() : err);
+    // rethrow supaya wrapper merespon error secara jelas
+    throw err;
+  }
+
+  console.log("forgetPassword FINISHED - returning success");
+  return { message: "Email reset sent" };
 };
 
+
+
 resetPassword = async (token, newPassword) => {
-  if (!newPassword) throw new BadRequest("Password baru wajib diisi");
 
   let decoded;
   try {
-    decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("RAW TOKEN =", token);
-    console.log("DECODED JWT PAYLOAD =", decoded);
-
+    decoded = jwt.verify(token, JWT_SECRET);
   } catch (err) {
-    throw new BadRequest("Token tidak valid atau sudah kedaluwarsa");
+    throw new BadRequest("Invalid or expired token");
   }
 
-  const hashedPassword = await bcrypt.hash(newPassword, 10);
-
   const user = await this.db.users.findUnique({
-    where: { email: decoded.email }
+    where: { id: decoded.userId }
   });
 
-  if (!user) throw new NotFound("Akun tidak ditemukan");
+  if (!user) throw new NotFound("Account not found");
+
+  const hashedPassword = await hash(newPassword, 10);
 
   await this.db.users.update({
-    where: { id: decoded.userId },
+    where: { id: user.id },
     data: { password: hashedPassword }
   });
 
-  return { message: "Password berhasil direset" };
+  return { message: "Password reset successful" };
 };
+
 
   getUserById = async (id) => {
   const user = await this.db.users.findUnique({ where: { id } });
@@ -103,11 +124,35 @@ resetPassword = async (token, newPassword) => {
   const pwValid = await compare(password, user.password);
   if (!pwValid) throw new BadRequest("Password is incorrect");
 
-  // Generate token
+  // =====================================================
+  // VALIDASI BAN
+  // =====================================================
+  if (user.status === false) {
+
+    // Jika duration masih aktif → ban masih berlaku
+    if (user.duration && new Date(user.duration) > new Date()) {
+      throw new Forbidden(
+        "Your account is banned until " + user.duration
+      );
+    }
+
+    // Jika duration sudah lewat → auto unban
+    if (user.duration && new Date(user.duration) <= new Date()) {
+      await this.db.users.update({
+        where: { id: user.id },
+        data: {
+          status: true,
+          duration: null
+        }
+      });
+    }
+  }
+  // =====================================================
+
+  // Jika lolos ban check, generate token
   const access_token = await generateAccessToken(user);
   const refresh_token = await generateRefreshToken(user);
 
-  // 🔥 Simpan refresh token ke DB
   await this.db.users.update({
     where: { id: user.id },
     data: { refresh_token },
@@ -118,6 +163,7 @@ resetPassword = async (token, newPassword) => {
     token: { access_token, refresh_token },
   };
 };
+
 
 
 
