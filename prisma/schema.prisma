@@ -68,7 +68,7 @@ model forum {
   id_categories        Int?
   follow               follow[]
   categories           categories? @relation(fields: [id_categories], references: [id], onUpdate: NoAction)
-  users                users?      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                users?      @relation(fields: [user_id], references: [id], onDelete: Cascade)
   threads              threads[]
 }
 
@@ -121,26 +121,27 @@ model threads_hashtags {
 }
 
 model users {
-  id               Int                @id @default(autoincrement())
-  username         String             @unique(map: "unique_username") @db.VarChar(50)
-  email            String             @unique(map: "unique_email") @db.VarChar(255)
-  password         String             @db.VarChar(255)
-  profile_image    String?            @db.VarChar(300)
-  bio              String?
-  status           Boolean?           @default(true)
-  created_at       DateTime?          @default(now()) @db.Timestamptz(6)
-  id_role          Int?               @default(2)
-  refresh_token    String?
-  duration         DateTime?          @db.Timestamptz(6)
-  bookmark_content bookmark_content[]
-  comments         comments[]
-  follow           follow[]
-  forum            forum[]
-  like_comments    like_comments[]
-  like_threads     like_threads[]
-  report           report[]
-  threads          threads[]
-  role_users       role_users?        @relation(fields: [id_role], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "users_roles_fkey")
+  id                                      Int                @id @default(autoincrement())
+  username                                String             @unique(map: "unique_username") @db.VarChar(50)
+  email                                   String             @unique(map: "unique_email") @db.VarChar(255)
+  password                                String             @db.VarChar(255)
+  profile_image                           String?            @db.VarChar(300)
+  bio                                     String?
+  status                                  Boolean?           @default(true)
+  created_at                              DateTime?          @default(now()) @db.Timestamptz(6)
+  id_role                                 Int?               @default(2)
+  refresh_token                           String?
+  duration                                DateTime?          @db.Timestamptz(6)
+  bookmark_content                        bookmark_content[]
+  comments                                comments[]
+  follow                                  follow[]
+  forum                                   forum[]
+  like_comments                           like_comments[]
+  like_threads                            like_threads[]
+  report_report_userd_id_report_toTousers report[]           @relation("report_userd_id_report_toTousers")
+  report_report_user_id_report_byTousers  report[]           @relation("report_user_id_report_byTousers")
+  threads                                 threads[]
+  role_users                              role_users?        @relation(fields: [id_role], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "users_roles_fkey")
 }
 
 model like_comments {
@@ -160,11 +161,13 @@ model threads_images {
 }
 
 model report {
-  id                 Int     @id @default(autoincrement())
-  report_option      String? @db.VarChar(255)
-  report_description String? @db.VarChar(500)
-  users_id           Int?
-  users              users?  @relation(fields: [users_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id                                     Int     @id @default(autoincrement())
+  report_option                          String? @db.VarChar(255)
+  report_description                     String? @db.VarChar(500)
+  user_id_report_by                      Int?
+  userd_id_report_to                     Int?
+  users_report_userd_id_report_toTousers users?  @relation("report_userd_id_report_toTousers", fields: [userd_id_report_to], references: [id], onDelete: Cascade)
+  users_report_user_id_report_byTousers  users?  @relation("report_user_id_report_byTousers", fields: [user_id_report_by], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "report_users_id_fkey")
 }
 
 enum role_user {

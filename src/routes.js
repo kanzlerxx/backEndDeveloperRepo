@@ -7,6 +7,7 @@ import usersRouter from './core/users/users.router.js';
 import comments from './core/comments/comments.router.js';
 import bookmarklistRouter from './core/bookmarklist/bookmarklist.router.js';
 import bookmarkcontentRouter from './core/bookmark_content/bookmark_content.router.js';
+import reportRouter from './core/report/report.router.js';
 const router = express.Router();
 
 
@@ -42,6 +43,10 @@ export const routeLists = [
     {
         path : '/bookmarkcontent',
         route: bookmarkcontentRouter
+    },
+    {
+        path : '/report',
+        route: reportRouter
     },
 
 
