@@ -107,6 +107,19 @@ refresh = this.wrapper(async (req, res) => {
       return this.ok(res, data, 'Registration successful');
     });
 
+    forgetPassword = this.wrapper(async (req, res) => {
+      const { email } = req.body;
+      const data = await this.#service.forgetPassword(email);
+      return this.ok(res, data, "Reset password link sent");
+    });
+
+    resetPassword = this.wrapper(async (req, res) => {
+      const { token, newPassword } = req.body;
+      const data = await this.#service.resetPassword(token, newPassword);
+      return this.ok(res, data, "Password reset successful");
+    });
+
+
     logout = this.wrapper(async (req, res) => {
   // jika kamu punya user id di req.user (dari middleware auth), revoke di DB
   if (req.user && req.user.id) {

@@ -12,7 +12,7 @@ class reportController extends BaseController {
 
   findAll = this.wrapper(async (req, res) => {
     const data = await this.#service.findAll(req.query);
-    return this.ok(res, data, "reports successfully retrieved");
+    return this.ok(res, data, "reports successfully retrieved");  
   });
 
   findById = this.wrapper(async (req, res) => {
@@ -23,9 +23,24 @@ class reportController extends BaseController {
   });
 
   create = this.wrapper(async (req, res) => {
-    const data = await this.#service.create(req.body);
-    return this.created(res, data, "report successfully created");
-  });
+  const targetId = Number(req.params.id);
+  const reporterId = req.userId;  // dari auth()
+
+  const payload = {
+    ...req.body,
+    user_id_report_by: reporterId,
+    user_id_report_to: targetId
+  };
+  console.log("REQ BODY >>", req.body);
+console.log("PARAMS >>", req.params);
+console.log("USER ID >>", req.userId);
+
+
+  const data = await this.#service.create(payload);
+
+  return this.created(res, data, "report successfully created");
+});
+  
 
   update = this.wrapper(async (req, res) => {
     const data = await this.#service.update(req.params.id, req.body);

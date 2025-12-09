@@ -18,11 +18,12 @@ r.get(
 r.get("/show-one/:id", controller.findById);
 
 r.post(
-  "/create",
+  "/user/:id",
   auth(),
   validatorMiddleware({ body: validator.create }),
   controller.create
 );
+
 
 r.put(
   "/update/:id",
