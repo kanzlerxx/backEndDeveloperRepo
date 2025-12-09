@@ -49,38 +49,31 @@
     };
 
     
-updateUser = async (id, payload, file) => {
-  const { username, bio } = payload;
-
-  // 1. Pastikan user ada
-  const user = await this.db.users.findUnique({
-    where: { id: Number(id) }
-  });
-
+updateUser = async (id, { username, bio }, file) => {
+  // 1. Cek user
+  const user = await this.db.users.findUnique({ where: { id } });
   if (!user) throw new NotFound("User not found");
 
-  // 2. Cek apakah username ingin diubah dan tidak bentrok dengan user lain
+  // 2. Validasi username jika dikirim → cek apakah duplikat
   if (username) {
-    const existing = await this.db.users.findFirst({
+    const existingUsername = await this.db.users.findFirst({
       where: {
         username,
         NOT: { id }
-      }
+      },
     });
-
-    if (existing) throw new Forbidden("Username already in use by another user");
+    if (existingUsername) throw new Forbidden("Username already in use");
   }
 
-  // 3. Siapkan data update (sementara kosong)
-  let updateData = {
-    username: username ?? user.username,
-    bio: bio ?? user.bio,
-  };
+  let newProfileImage = user.profile_image;
 
-  // 4. Jika ada file → upload photo baru
+  // 3. Jika upload file → hapus foto lama + upload baru
   if (file) {
-    // Hapus foto lama jika bukan default
-    if (user.profile_image && !user.profile_image.includes("default")) {
+    // Hapus foto lama (jika bukan default)
+    if (
+      user.profile_image &&
+      !user.profile_image.includes("default")
+    ) {
       const relativePath = user.profile_image.replace(
         `${process.env.SUPABASE_URL}/storage/v1/object/public/image/`,
         ""
@@ -102,29 +95,38 @@ updateUser = async (id, payload, file) => {
 
     if (error) throw new Error("Upload failed: " + error.message);
 
-    const profileUrl = supabase.storage
+    newProfileImage = supabase.storage
       .from("image")
       .getPublicUrl(uploadPath).data.publicUrl;
-
-    updateData.profile_image = profileUrl;
   }
 
-  // 5. Update database
+  // 4. Update user
   const updated = await this.db.users.update({
-    where: { id: Number(id) },
-    data: updateData,
+    where: { id },
+    data: {
+      username: username ?? user.username,
+      bio: bio ?? user.bio,
+      profile_image: newProfileImage,
+    },
   });
 
+  // 5. Kembalikan response model seperti login
   return {
-    message: "Profile updated successfully",
-    data: {
+    user: {
       id: updated.id,
       username: updated.username,
-      bio: updated.bio,
+      email: updated.email,
       profile_image: updated.profile_image,
-    }
+      bio: updated.bio,
+      status: updated.status,
+      created_at: updated.created_at,
+      id_role: updated.id_role,
+      duration: updated.duration,
+    },
+    message: "Profile updated successfully"
   };
 };
+
 
 
     delete = async (id) => {

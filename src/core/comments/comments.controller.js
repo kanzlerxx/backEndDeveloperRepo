@@ -11,6 +11,16 @@ class commentsController extends BaseController {
     this.#service = new commentsService();
   }
 
+findByThreadsId = this.wrapper(async (req, res) => {
+  const { threads_id } = req.params;
+
+  const data = await this.#service.findByThreadsId(threads_id);
+
+  return this.ok(res, data, "Comments retrieved by threads_id");
+});
+
+
+
   findAll = this.wrapper(async (req, res) => {
     const data = await this.#service.findAll(req.query);
     return this.ok(res, data, "commentss successfully retrieved");
@@ -23,11 +33,16 @@ class commentsController extends BaseController {
     return this.ok(res, data, "comments successfully retrieved");
   });
 
-createComment = this.wrapper(async (req, res) => {
+   createComment = this.wrapper(async (req, res) => {
   const user_id = req.user.id;
-  const data = await this.#service.createComment(req.body, req.file, user_id);
+
+  const file = req.file ?? null; // aman
+
+  const data = await this.#service.createComment(req.body, file, user_id);
+
   return this.ok(res, data, "Comment created successfully");
 });
+ 
 
 likeComment = this.wrapper(async (req, res) => {
   const { comment_id } = req.body;
