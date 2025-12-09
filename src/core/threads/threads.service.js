@@ -358,9 +358,68 @@ showAllLikeThreads = async (query) => {
   };
 };
 
+findThreadsByForumId = async (forumId, userId) => {
+  const threads = await this.db.threads.findMany({
+    where: { forum_id: forumId },
+    include: {
+      threads_images: true,
+      like_threads: true,
+      comments: true,
+      users: true,
+      forum: true
+    }
+  });
 
+  return threads.map(th => ({
+    id: th.id,
+    user_id: th.user_id,
+    threads_title: th.threads_title,
+    threads_thumbnail: th.threads_thumbnail,
+    threads_description: th.threads_description,
+    threads_concern: th.threads_concern,
+    forum_id: th.forum_id,
+    threads_images: th.threads_images,
+    total_likes_threads: th.like_threads.length,
+    total_comments_threads: th.comments.length,
+    is_liked: th.like_threads.some(l => l.user_id === userId),
 
+  }));
+};
 
+findThreadsFromFollowingForum = async (userId) => {
+  const follows = await this.db.follow.findMany({
+    where: { user_id: userId },
+    select: { following_forum_id: true }
+  });
+
+  const forumIds = follows.map(f => f.following_forum_id);
+  if (forumIds.length === 0) return [];
+
+  const threads = await this.db.threads.findMany({
+    where: { forum_id: { in: forumIds } },
+    include: {
+      threads_images: true,
+      like_threads: true,
+      comments: true,
+      users: true,
+      forum: true
+    }
+  });
+
+  return threads.map(th => ({
+    id: th.id,
+    user_id: th.user_id,
+    threads_title: th.threads_title,
+    threads_thumbnail: th.threads_thumbnail,
+    threads_description: th.threads_description,
+    threads_concern: th.threads_concern,
+    forum_id: th.forum_id,
+    threads_images: th.threads_images,
+    total_likes_threads: th.like_threads.length,
+    total_comments_threads: th.comments.length,
+    is_liked: th.like_threads.some(l => l.user_id === userId),
+  }));
+};
 
  
 likeThread = async ({ thread_id, user_id }) => {

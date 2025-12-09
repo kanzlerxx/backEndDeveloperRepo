@@ -38,6 +38,18 @@ const r = Router(),
     authOptional, 
     controller.findById);
 
+  r.get(
+    "/forum/:id",
+    authOptional,
+    controller.findThreadsByForumId
+  );
+  
+  r.get(
+    "/from-following",
+    auth(),
+    controller.findThreadsFromFollowingForum
+  );
+
 r.post(
   "/create",
   auth(),

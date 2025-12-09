@@ -2,6 +2,7 @@ import BaseController from '../../base/controller.base.js';
   import { NotFound } from '../../exceptions/catch.execption.js';
   import AuthenticationService from './authentication.service.js';
 import { encrypt, decrypt } from "../../helpers/encryption.helper.js";
+import status from 'http-status';
 
 
   class AuthenticationController extends BaseController {
@@ -50,13 +51,9 @@ import { encrypt, decrypt } from "../../helpers/encryption.helper.js";
     delete data.user.refresh_token;
   }
 
-  return res.json({
-  message: "Login success",
-  token: {
-    access_token: data.token.access_token
-  },
-  user: data.user
-});
+  return this.ok(res,{
+    user: data.user,
+  });
 
 });
 
@@ -93,13 +90,9 @@ refresh = this.wrapper(async (req, res) => {
     delete data.user.refresh_token; 
   }
 
- return res.json({
-  message: "Token refreshed",
-  token: {
-    access_token: data.token.access_token
-  },
-  user: data.user
-});
+  return this.ok(res, {
+    user: data.user,
+  }, "Token refreshed successfully");
 
 });
 
