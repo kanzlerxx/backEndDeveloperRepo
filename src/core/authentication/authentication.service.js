@@ -5,7 +5,6 @@
   import { generateAccessToken, generateRefreshToken,} from '../../helpers/jwt.helper.js';
   import prisma from '../../config/prisma.db.js';
   import { createClient } from '@supabase/supabase-js';
-import { duration } from 'moment';
 
       const JWT_SECRET = process.env.JWT_SECRET || "secret_reset_password";
     const supabase = createClient(
