@@ -32,6 +32,15 @@ r.get("/show-one/:id",
   controller.findById
 );
 
+r.get(
+  "/show-all/by-total-follower",
+  authOptional,
+  controller.findForumsByTotalFollower
+);
+
+
+
+
 r.post(
   "/create",
   auth(),

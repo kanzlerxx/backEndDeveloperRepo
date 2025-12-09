@@ -10,7 +10,7 @@ export async function seedForum(user) {
 
   const forum = await prisma.forum.create({
     data: {
-      forum_title: "Forum Teknologi",
+      forum_title: "Forum Teknologi bandung",
       forum_description: "Diskusi teknologi",
       user_id: user.id,
       id_categories: category.id,

@@ -72,11 +72,13 @@ class forumService extends BaseService {
 
   return forums.map(forum => ({
     id: forum.id,
-    name: forum.name,
+    user_id: forum.user_id,
+    forum_title: forum.forum_title,
+    forum_description: forum.forum_description,
     forum_profile: forum.forum_profile,
     forum_banner: forum.forum_banner,
     id_categories: forum.id_categories,
-    user_id: forum.user_id,
+    
 
     forum_total_threads: forum._count.threads,
     forum_total_follower: forum._count.follow,
@@ -92,19 +94,72 @@ class forumService extends BaseService {
  findById = async (id, userId) => {
   const forum = await this.db.forum.findUnique({
     where: { id: Number(id) },
-    include: {
-      follow: true // TANPA WHERE FILTER
+   include: {
+      follow: true, // TANPA FILTER
+      _count: {
+        select: {
+          threads: true,
+          follow: true
+        }
+      }
     }
   });
 
   if (!forum) return null;
 
   return {
-    ...forum,
-    forum_total_follower: forum.follow.length,
+    id: forum.id,
+    user_id: forum.user_id,
+    forum_title: forum.forum_title,
+    forum_description: forum.forum_description,
+    forum_profile: forum.forum_profile,
+    forum_banner: forum.forum_banner,
+    id_categories: forum.id_categories,
+    
+
+    forum_total_threads: forum._count.threads,
+    forum_total_follower: forum._count.follow,
+
+    // CEK FOLLOW DENGAN USERID
     is_followed: forum.follow.some(f => f.user_id === userId)
   };
 };
+
+findForumsByTotalFollower = async (userId) => {
+  const forums = await this.db.forum.findMany({
+    orderBy: { forum_total_follower: "desc" },
+    include: {
+      follow: true,
+      _count: {
+        select: { 
+          threads: true, 
+          follow: true 
+        }
+      }
+    }
+  });
+
+  return forums.map(forum => ({
+    id: forum.id,
+    user_id: forum.user_id,
+    forum_title: forum.forum_title,
+    forum_description: forum.forum_description,
+    forum_profile: forum.forum_profile,
+    forum_banner: forum.forum_banner,
+    id_categories: forum.id_categories,
+    
+
+    forum_total_threads: forum._count.threads,
+    forum_total_follower: forum._count.follow,
+
+    // CEK FOLLOW DENGAN USERID
+    is_followed: forum.follow.some(f => f.user_id === userId)
+  }));
+};
+
+
+
+
 
 
 

@@ -35,6 +35,12 @@ const data = await this.#service.findById(req.params.id, userId);
   return this.ok(res, data, "forum successfully retrieved");
 });
 
+findForumsByTotalFollower = this.wrapper(async (req, res) => {
+  const userId = req.user?.id;
+  const data = await this.#service.findForumsByTotalFollower(userId);
+
+  return this.ok(res, data, "forum sorted by total follower");
+});
 
 
   followForum = this.wrapper(async (req, res) => {
